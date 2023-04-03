@@ -11,7 +11,8 @@ Repository to quickly label lots of images using CLIP embeddings
     - by uuid (= random)
     - best predicted first
     - worst predicted first
-7. Go back to (3) and iterate until satisfied
+7. Go back to (3) and iterate until satisfied with the predicted labels
+8. Filter your dataset using the predicted labels
 
 
 ## Detailed walkthrough:

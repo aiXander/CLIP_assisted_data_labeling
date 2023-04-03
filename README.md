@@ -22,8 +22,8 @@ Best practice is to start by converting all you images to the same format eg (.j
 
 ```
 sudo apt-get install imagemagick
-mogrify -format jpg *.png && rm *.png
-mogrify -format jpg *.JPEG && rm *. JPEG
+mogrify -format jpg *.png  && rm *.png
+mogrify -format jpg *.JPEG && rm *.JPEG
 mogrify -format jpg *.jpeg && rm *.jpeg
 mogrify -format jpg *.webp && rm *.webp
 ```

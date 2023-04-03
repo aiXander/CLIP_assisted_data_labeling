@@ -21,6 +21,7 @@ Repository to quickly label lots of images using CLIP embeddings
 Best practice is to start by converting all you images to the same format eg (.jpg), using something like:
 
 ```
+sudo apt-get install imagemagick
 mogrify -format jpg *.png && rm *.png
 mogrify -format jpg *.JPEG && rm *. JPEG
 mogrify -format jpg *.jpeg && rm *.jpeg

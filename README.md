@@ -8,8 +8,7 @@ Repository to quickly label lots of images using CLIP embeddings
 4. Train a NN regressor/classifier on the current database (CLIP-embedding --> label)
 5. Predict the labels for all the unlabeled images
 6. Sort the images in one of four ways:
-    - random
-    - by uuid
+    - by uuid (= random)
     - best predicted first
     - worst predicted first
 7. Go back to (3) and iterate until satisfied

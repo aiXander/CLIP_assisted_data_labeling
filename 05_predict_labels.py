@@ -20,9 +20,11 @@ python 05_predict_labels.py
 
 root_directory = '/home/xander/Pictures/datasets/mj_filtered_uuid'
 root_directory = '/data/datasets/midjourney'
+root_directory = '/data/xander/final_filtered_renamed'
+
 model_file = 'models/2023-04-03_13:44:28_1077_10_0.0062.pkl'
 batch_size = 16
-copy_named_imgs_fraction = 0.01
+copy_named_imgs_fraction = 0.03
 
 output_dir = root_directory + '_predicted_scores'
 os.makedirs(output_dir, exist_ok=True)

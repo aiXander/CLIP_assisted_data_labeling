@@ -101,7 +101,7 @@ class ImageEncoder:
         return [centre_crop, square_padded_img, subcrop_1, subcrop_2]
     
 class CLIP_Feature_Dataset():
-    def __init__(self, root_dir, clip_model_name, clip_model_path = None, force_reencode = False):
+    def __init__(self, root_dir, clip_model_name, clip_model_path = None, force_reencode = False, shuffle_filenames = True):
         self.root_dir = root_dir
         self.force_reencode = force_reencode
         self.img_extensions = (".png", ".jpg", ".jpeg", ".JPEG", ".JPG", ".PNG")
@@ -109,6 +109,11 @@ class CLIP_Feature_Dataset():
 
         print("Searching for images..")
         self.img_filepaths = [os.path.join(root, name) for root, dirs, files in os.walk(root_dir) for name in files if name.endswith(self.img_extensions)]
+        
+        if shuffle_filenames:
+            random.shuffle(self.img_filepaths)
+        else: # sort filenames:
+            self.img_filepaths.sort()
         print(f"Found {len(self.img_filepaths)} images in {root_dir}")
 
     def __len__(self):
@@ -130,17 +135,16 @@ class CLIP_Feature_Dataset():
 
 """
 
-export CUDA_VISIBLE_DEVICES=3
+export CUDA_VISIBLE_DEVICES=1
 cd /home/xander/Projects/cog/CLIP_active_learning_classifier/CLIP_assisted_data_labeling
-python 02_embed_with_CLIP.py
+python embed_with_CLIP_02.py
 
 """
 
 if __name__ == "__main__":
-
-    root_dir = "/data/xander/final_filtered_renamed"
+    root_dir = "/data/datasets/midjourney2"
     clip_model_name = "ViT-L-14-336/openai"  # "ViT-L-14/openai" #SD 1.x  //  "ViT-H-14/laion2b_s32b_b79k" #SD 2.x
     clip_model_path = "/home/xander/Projects/cog/cache"
     
-    dataset = CLIP_Feature_Dataset(root_dir, clip_model_name, clip_model_path = clip_model_path, force_reencode = True)
+    dataset = CLIP_Feature_Dataset(root_dir, clip_model_name, clip_model_path = clip_model_path, force_reencode = False)
     dataset.process()

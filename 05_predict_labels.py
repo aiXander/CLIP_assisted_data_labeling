@@ -18,9 +18,7 @@ python 05_predict_labels.py
 
 """
 
-root_directory = '/home/xander/Pictures/datasets/mj_filtered_uuid'
-root_directory = '/data/datasets/midjourney'
-root_directory = '/data/xander/final_filtered_renamed'
+root_directory = '/data/datasets/midjourney2'
 
 model_file = 'models/2023-04-03_13:44:28_1077_10_0.0062.pkl'
 batch_size = 16
@@ -78,7 +76,7 @@ img_files = [f.split('.')[0] for f in os.listdir(root_directory) if f.endswith('
 print(f"Predicting labels for {len(img_files)} images...")
 
 features, paths, uuids = [], [], []
-n_predictions = 0
+n_predictions, n_skips = 0,0
 
 for uuid in tqdm(img_files):
     # Get the row in the database that corresponds to this uuid:
@@ -93,8 +91,12 @@ for uuid in tqdm(img_files):
 
     img_path = os.path.join(root_directory, uuid + '.jpg')
     feature_path = os.path.join(root_directory, uuid + '.pt')
-    feature_vector = torch.load(feature_path).flatten().to(device).float()
 
+    if not os.path.exists(feature_path): #if there's no CLIP embbeding, just skip
+        n_skips += 1
+        continue
+
+    feature_vector = torch.load(feature_path).flatten().to(device).float()
     features.append(feature_vector)
     paths.append(img_path)
     uuids.append(uuid)
@@ -107,4 +109,7 @@ for uuid in tqdm(img_files):
         database.to_csv(label_file, index=False)
 
 database.to_csv(label_file, index=False)
+print("Done!")
+print(f"{n_predictions} of {len(img_files)} images predicted ({n_skips} skipped due to no CLIP embbeding found on disk).")
+print(f"Database saved at {label_file}")
 

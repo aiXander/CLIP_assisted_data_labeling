@@ -123,7 +123,7 @@ def re_order_images(image_files, database):
     sorting_option = create_sorting_window()
 
     if sorting_option == "uuid":
-        image_files = sorted(glob.glob(os.path.join(root_directory, "*.jpg")))
+        return image_files
 
     else:
         # Modify the image_files sorting according to the selected option
@@ -148,13 +148,18 @@ def re_order_images(image_files, database):
 
     return image_files
 
+def is_already_labeled(label):
+    return (label != "") and (label is not None) and (not np.isnan(label))
+
+def print_label_info(database, columns = ["uuid", "label", "predicted_label"]):
+    n_labeled = sum(map(is_already_labeled, database['label']))
+    print(f"{n_labeled} of {len(database)} images in the database labeled") 
 
 def fix_database(database):
     # Loop over all rows of the dataframe
     # When a row has the "label" column filled in, copy that value to the predicted_label column:
     for index, row in database.iterrows():
-        label = row['label']
-        if (label != "") and (label is not None) and (not np.isnan(label)):
+        if is_already_labeled(row['label']):
             database.loc[index, 'predicted_label'] = row['label']
 
     return database
@@ -185,20 +190,21 @@ def load(uuid, database):
         
 def label_dataset(root_directory, skip_labeled_files = True):
     label_file = os.path.join(os.path.dirname(root_directory), os.path.basename(root_directory) + ".csv")
-    image_files = sorted(glob.glob(os.path.join(root_directory, "*.jpg")))
+    image_files = sorted(glob.glob(os.path.join(root_directory, "**/*.jpg"), recursive=True))
 
     if os.path.exists(label_file):
         database = pd.read_csv(label_file)
     else:
-        database = pd.DataFrame(columns=["uuid", "label", "timestamp"])
+        database = pd.DataFrame(columns=["uuid", "label", "timestamp", "predicted_label"])
 
     # count how many rows have the label column filled in:
     labeled_count = len(database.loc[database["label"].notnull()])
-    print(f"Found {labeled_count} labeled images in {label_file}")
+    print(f"Found {labeled_count} labeled images ({len(image_files)} total) in {label_file}")
 
     database = fix_database(database)
     image_files = re_order_images(image_files, database)
     current_index = 0
+    extra_labels = 0
 
     while True:
         image_file = image_files[current_index]
@@ -215,10 +221,13 @@ def label_dataset(root_directory, skip_labeled_files = True):
         if label is not None and not np.isnan(label):
             cv2.putText(image, f"{label:.2f} || {prompt}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 100, 25), 2)
         else:
-            # Get the predicted label from the database:
-            predicted_label = database.loc[database["uuid"] == uuid, "predicted_label"].values[0]
-            cv2.putText(image, f"predicted: {predicted_label:.2f} || {prompt}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 100, 25), 2)
-            
+            try:
+                # Get the predicted label from the database:
+                predicted_label = database.loc[database["uuid"] == uuid, "predicted_label"].values[0]
+                cv2.putText(image, f"predicted: {predicted_label:.2f} || {prompt}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 100, 25), 2)
+            except:
+                cv2.putText(image, f"{prompt}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 100, 25), 2)
+                
         cv2.imshow("", image)
         key = cv2.waitKey(0)
 
@@ -226,9 +235,12 @@ def label_dataset(root_directory, skip_labeled_files = True):
             label = (key - ord('0')) / 10.0
             database = relabel_image(uuid, label, database)
             current_index += 1
+            extra_labels += 1
 
-            # Save the database:
-            database.to_csv(label_file, index=False)
+            if extra_labels % 1 == 0:
+                # Save the database:
+                database.to_csv(label_file, index=False)
+                print_label_info(database)
 
         elif key == ord('q') or key == 27:  # 'q' or 'esc' key
             break
@@ -247,11 +259,13 @@ def label_dataset(root_directory, skip_labeled_files = True):
 
 """
 
-cd /home/xander/Projects/cog/CLIP_active_learning_classifier/CLIP_assisted_data_labeling
+cd /home/rednax/SSD2TB/Xander_Tools/CLIP_assisted_data_labeling
 python 03_label_images.py
 
 """
 
 if __name__ == "__main__":
-    root_directory = "/home/xander/Pictures/datasets/mj_filtered_uuid"
-    label_dataset(root_directory)
+    root_directory = "/home/rednax/SSD2TB/Fast_Datasets/SD/Labeling/datasets/Infinity2"
+    skip_labeled_files = 1
+
+    label_dataset(root_directory, skip_labeled_files)

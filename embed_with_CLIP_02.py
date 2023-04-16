@@ -120,31 +120,42 @@ class CLIP_Feature_Dataset():
         return len(self.img_filepaths)
 
     def process(self):
+        n_embedded, n_skipped = 0, 0
+        print(f"Embedding dataset of {len(self.img_filepaths)} images...")
+
         for img_filepath in tqdm(self.img_filepaths):
             base_img_path = os.path.splitext(img_filepath)[0]
             feature_save_path = base_img_path + ".pt"
 
             if not os.path.exists(feature_save_path) or self.force_reencode:
-                img = Image.open(img_filepath)
-                features = self.img_encoder.encode_image(img)
-                torch.save(features, feature_save_path)
+                try:
+                    img = Image.open(img_filepath)
+                    features = self.img_encoder.encode_image(img)
+                    torch.save(features, feature_save_path)
+                    n_embedded += 1
+                except Exception as e:
+                    print(f"Could not encode image: {img_filepath}, error: {e}")
+            else:
+                n_skipped += 1
+
+            if (n_embedded + n_skipped) % 500 == 0:
+                print(f"Skipped {n_skipped} images, embedded {n_embedded} images")
 
         print("--- Feature encoding done!")
         print(f"Saved {len(self.img_filepaths)} feature vectors of shape {str(features.shape)} to {self.root_dir}")
 
-
 """
 
-export CUDA_VISIBLE_DEVICES=1
-cd /home/xander/Projects/cog/CLIP_active_learning_classifier/CLIP_assisted_data_labeling
+cd /home/rednax/SSD2TB/Xander_Tools/CLIP_assisted_data_labeling
 python embed_with_CLIP_02.py
 
 """
 
 if __name__ == "__main__":
-    root_dir = "/data/datasets/midjourney2"
+    root_dir = "/home/rednax/2TBHDD/Datasets/prn/fixed_database"
     clip_model_name = "ViT-L-14-336/openai"  # "ViT-L-14/openai" #SD 1.x  //  "ViT-H-14/laion2b_s32b_b79k" #SD 2.x
-    clip_model_path = "/home/xander/Projects/cog/cache"
+    #clip_model_path = "/home/xander/Projects/cog/cache"
+    clip_model_path = None
     
     dataset = CLIP_Feature_Dataset(root_dir, clip_model_name, clip_model_path = clip_model_path, force_reencode = False)
     dataset.process()

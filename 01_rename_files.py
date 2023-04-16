@@ -14,6 +14,7 @@ def rename_files(root_dir, output_folder,
     '''
 
     os.makedirs(output_folder, exist_ok=True)
+    print("Running...")
     
     counter, skipped = 0, 0
     for subdir, dirs, files in os.walk(root_dir):
@@ -39,8 +40,16 @@ def rename_files(root_dir, output_folder,
                     shutil.copy(orig_filename, new_filename)
 
             counter += 1
-
+        if counter % 500 == 0:
+            print(f"Renamed {counter} files, skipped {skipped}")
+    
     print(f"Renamed {counter} files, skipped {skipped}")
+
+"""
+cd ...
+python 01_rename_files.py --input_dir /home/rednax/2TBHDD/Datasets/Infinity/Infinity --output_dir /home/rednax/2TBHDD/Datasets/Infinity/Infinity2
+
+"""
 
 
 

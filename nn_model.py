@@ -4,7 +4,7 @@ from torch import nn
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class SimpleFC(nn.Module):
-    def __init__(self, input_size, hidden_sizes, output_size):
+    def __init__(self, input_size, hidden_sizes, output_size, dropout_prob=0.0):
         super(SimpleFC, self).__init__()
 
         layer_sizes = [input_size] + hidden_sizes + [output_size]
@@ -14,6 +14,7 @@ class SimpleFC(nn.Module):
             # add ReLU after each layer except the last one
             if i < len(layer_sizes) - 2:
                 layers.append(nn.ReLU())
+                layers.append(nn.Dropout(p=dropout_prob))
 
         self.layers = nn.ModuleList(layers)
 

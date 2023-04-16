@@ -10,22 +10,23 @@ from nn_model import device, SimpleFC
 
 """
 
-cd /home/xander/Projects/cog/CLIP_active_learning_classifier/CLIP_assisted_data_labeling
+cd /home/rednax/SSD2TB/Xander_Tools/CLIP_assisted_data_labeling
 python 04_train_model.py
 
 
 
 """
 
-train_data_dir = '/home/xander/Pictures/datasets'
+train_data_dir = '/home/rednax/SSD2TB/Fast_Datasets/SD/Labeling/datasets'
 train_data_name = 'mj_filtered_uuid'
-batch_size = 4
-lr = 0.0001
+batch_size = 128
+lr = 0.001
 weight_decay = 0.001
-hidden_sizes = [128,32]
+hidden_sizes = [264,128]
+dropout_prob = 0.5
 
-test_fraction = 0.05
-n_epochs = 10
+test_fraction = 0.01
+n_epochs = 30
 
 # Fix all random seeds for reproducibility:
 random_seed = 42
@@ -80,7 +81,7 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 # 4. Create the network
 input_size = features.shape[1]
 output_size = 1
-model = SimpleFC(input_size, hidden_sizes, output_size)
+model = SimpleFC(input_size, hidden_sizes, output_size, dropout_prob=dropout_prob)
 model.train()
 model.to(device)
 
@@ -129,6 +130,7 @@ plt.savefig("losses.png")
 n_train = len(train_dataset)
 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H:%M:%S")
 model_name = f"{timestamp}_{n_train}_{n_epochs}_{losses[-1]:.4f}"
+os.makedirs("models", exist_ok=True)
 torch.save(model.state_dict(), f"models/{model_name}.pt")
 
 import pickle

@@ -33,7 +33,12 @@ def copy_data(input_dir, min_score, extensions = ['.jpg'], output_suffix = '_sub
 
     for ext, count in zip(extensions, counter):
         print(f"Copied {count} files with extension {ext} to {output_folder}")
-
+        
+    # count the total number of img files in the output folder:
+    img_extensions = ('.jpg', '.jpeg', '.png')
+    n_img_files = len([f for f in os.listdir(output_folder) if f.endswith(img_extensions)])
+    # append the total number of imgs to the output foldername:
+    os.rename(output_folder, output_folder + f"_{n_img_files}_imgs")
 
 '''
 

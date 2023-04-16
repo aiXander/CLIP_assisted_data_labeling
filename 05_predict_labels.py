@@ -2,25 +2,16 @@ import os
 import numpy as np
 import pandas as pd
 import torch, shutil
-from torch.utils.data import DataLoader, Dataset, random_split
-from torch.optim import Adam
+from torch.utils.data import DataLoader, Dataset
 import pickle, time
 import random
 from tqdm import tqdm
-
 from nn_model import device, SimpleFC
 
-"""
 
-cd /home/xander/Projects/cog/CLIP_active_learning_classifier/CLIP_assisted_data_labeling
-python 05_predict_labels.py
+root_directory = '/home/rednax/SSD2TB/Fast_Datasets/SD/Labeling/datasets/Infinity2'
 
-
-"""
-
-root_directory = '/data/datasets/midjourney2'
-
-model_file = 'models/2023-04-03_13:44:28_1077_10_0.0062.pkl'
+model_file = 'models/2023-04-16_02:18:36_1500_30_0.0053.pkl'
 batch_size = 16
 copy_named_imgs_fraction = 0.03
 
@@ -32,9 +23,7 @@ with open(model_file, "rb") as file:
     model = pickle.load(file)
 
 def predict(features, paths, uuids, database, row):
-    features = torch.stack(features, dim=0).to(device).float()
-    output = model(features)
-    output = output.detach().cpu().numpy()
+    output = model(features).detach().cpu().numpy()
 
     for i in range(len(output)):
         predicted_score = output[i][0]
@@ -47,7 +36,13 @@ def predict(features, paths, uuids, database, row):
             database = pd.concat([database, pd.DataFrame([new_row])], ignore_index=True)
         else:
             # Update the existing entry:
-            index_to_update = database.loc[database['uuid'] == uuid].index[0]
+            index_to_update = database.loc[database['uuid'] == uuid]
+            
+            if len(index_to_update) == 0:
+                print(f"ERROR: could not find uuid {uuid} in database!")
+                continue
+            else:
+                index_to_update = index_to_update.index[0]
             # Update the values in the row
             database.loc[index_to_update, 'predicted_label'] = predicted_score
             database.loc[index_to_update, 'timestamp'] = current_timestamp
@@ -102,6 +97,7 @@ for uuid in tqdm(img_files):
     uuids.append(uuid)
 
     if len(paths) == batch_size:
+        features = torch.stack(features, dim=0).to(device).float()
         database = predict(features, paths, uuids, database, row)
         n_predictions += batch_size
         features, paths, uuids = [], [], []

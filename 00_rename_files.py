@@ -51,19 +51,14 @@ def rename_files(root_dir, output_folder,
         
         print(f"{print_verb} {counter} files, skipped {skipped}")
 
-"""
-cd ...
-python 00_rename_files.py --input_dir /home/.. --output_dir /home/..
-
-"""
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_dir', type=str, help='Input directory')
     parser.add_argument('--output_dir', type=str, default = None, help='Output directory')
-    parser.add_argument('--mode', type=str, default='copy', help='Mode: rename in place or copy')
+    parser.add_argument('--mode', type=str, default='copy', help='Modes: rename (in place) or copy')
     args = parser.parse_args()
 
+    
     if args.mode == 'copy' and args.output_dir is None:
         raise ValueError("Output directory must be specified when mode is 'copy'")
 

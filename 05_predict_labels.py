@@ -100,7 +100,7 @@ def predict_labels(args):
             continue
 
         feature_dict = torch.load(feature_path)
-        img_features = [feature_dict[crop_name] for crop_name in model.crop_names if crop_name in feature_dict]
+        img_features = [feature_dict[crop_name] for crop_name in model.crop_names if crop_name in feature_dict.keys()]
         img_features = torch.stack(img_features, dim=0)
         n_features = img_features.shape[0]
         if n_features != len(model.crop_names):

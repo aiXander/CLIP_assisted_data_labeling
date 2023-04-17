@@ -4,7 +4,7 @@ import torch
 import argparse
 from tqdm import tqdm
 
-def get_paths_and_embeddings(root_dir):
+def get_paths_and_embeddings(root_dir, crop_to_use = 'square_padded_crop'):
     for subdir, dirs, files in os.walk(root_dir):
         print(f"Parsing {subdir}, subdirs: {dirs}, n_files: {len(files)}..")
         paths, embeddings = [], []         
@@ -22,7 +22,7 @@ def get_paths_and_embeddings(root_dir):
             if '.jpg' in extension_list and '.pt' in extension_list:
                 path = os.path.join(subdir, filename + '.jpg')
                 embedding_dict = torch.load(os.path.join(subdir, filename + '.pt'))
-                embedding = embedding_dict['square_padded_crop'].squeeze()
+                embedding = embedding_dict[crop_to_use].squeeze()
                 paths.append(path)
                 embeddings.append(embedding)
 
@@ -30,13 +30,17 @@ def get_paths_and_embeddings(root_dir):
 
 
 def find_near_duplicates(root_dir, 
-                         threshold=0.95, 
+                         threshold=0.975, 
                          sim_type='cosine', # ['cosine', 'euclidean']
-                         fix_mode='copy' # ['rename', 'copy']
+                         mode='copy',   # ['rename', 'copy']
+                         crop_to_use = 'square_padded_crop',  # which crop CLIP embedding do we compute the similarity on?
                          ):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    for paths, embeddings in get_paths_and_embeddings(root_dir):
+    for paths, embeddings in get_paths_and_embeddings(root_dir, crop_to_use):
+
+        if len(paths) == 0 or len(embeddings) == 0:
+            continue
 
         embeddings = torch.stack(embeddings).to(device)
         print("Embeddings shape:", embeddings.shape)
@@ -58,18 +62,24 @@ def find_near_duplicates(root_dir,
 
         near_duplicates = [(paths[i], paths[j]) for i, j in near_duplicate_indices]
 
+        # Get the actual similarity_value for each duplicate pair:
+        near_duplicate_values = [similarity_matrix[i, j].item() for i, j in near_duplicate_indices]
+
         # Create a folder for the near duplicates next to the root_dir:
         output_dir = os.path.join(os.path.dirname(root_dir), f"near_duplicates_{sim_type}_{threshold}")
         os.makedirs(output_dir, exist_ok=True)
 
         i = 0
-        for i, img_paths in enumerate(near_duplicates):
-            fix_duplicate(i, img_paths, output_dir, mode=fix_mode)
+        for i, (img_paths, sim_value) in enumerate(zip(near_duplicates, near_duplicate_values)):
+            fix_duplicate(i, img_paths, output_dir, sim_value, mode=mode)
 
-        print(f"Fixed {i} duplicates (out of {len(paths)} total imgs), saved to {output_dir}")
+        if mode == 'move':
+            print(f"Moved {i} duplicates (out of {len(paths)} total imgs) to {output_dir}")
+        elif mode == 'copy':
+            print(f"Found {i} duplicates (not removed from data yet!) out of {len(paths)} total imgs, results shown in {output_dir}")
 
 
-def fix_duplicate(duplicate_index, img_paths, outdir, mode = 'copy'):
+def fix_duplicate(duplicate_index, img_paths, outdir, sim_value, mode = 'copy'):
     dirname = os.path.dirname(img_paths[0])
     # get the two basenames without extensions:
     basename1 = os.path.splitext(os.path.basename(img_paths[0]))[0]
@@ -82,13 +92,13 @@ def fix_duplicate(duplicate_index, img_paths, outdir, mode = 'copy'):
     # copy all files to the output directory:
     for f in files1:
         if mode == 'copy':
-            shutil.copy(f, os.path.join(outdir, f"{duplicate_index:08d}_source_{os.path.basename(f)}"))
+            shutil.copy(f, os.path.join(outdir, f"{sim_value:.3f}_{duplicate_index:08d}_source_{os.path.basename(f)}"))
 
     for f in files2:
         if mode == 'copy':
-            shutil.copy(f, os.path.join(outdir, f"{duplicate_index:08d}_target_{os.path.basename(f)}"))
+            shutil.copy(f, os.path.join(outdir, f"{sim_value:.3f}_{duplicate_index:08d}_target_{os.path.basename(f)}"))
         if mode == 'move':
-            shutil.move(f, os.path.join(outdir, f"{duplicate_index:08d}_target_{os.path.basename(f)}"))
+            shutil.move(f, os.path.join(outdir, f"{sim_value:.3f}_{duplicate_index:08d}_target_{os.path.basename(f)}"))
 
     return
     
@@ -96,8 +106,8 @@ def fix_duplicate(duplicate_index, img_paths, outdir, mode = 'copy'):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_dir', type=str, help='Root directory of the dataset')
-    parser.add_argument('--threshold', type=float, default=0.95, help='Cosine-similarity threshold for near-duplicate detection')
-    parser.add_argument('--fix_mode', type=str, default='copy', help='Fix mode: copy / move. Use copy to test the script, move after')
+    parser.add_argument('--threshold', type=float, default=0.975, help='Cosine-similarity threshold for near-duplicate detection')
+    parser.add_argument('--mode', type=str, default='copy', help='copy / move, Use copy to test the script, move after')
     args = parser.parse_args()
 
-    find_near_duplicates(root_dir=args.root_dir, threshold=args.threshold, fix_mode=args.fix_mode)
+    find_near_duplicates(root_dir=args.root_dir, threshold=args.threshold, mode=args.mode)

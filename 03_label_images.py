@@ -141,9 +141,9 @@ def re_order_images(image_files, database):
         # get the uuids of those rows in the database:
         uuids = database['uuid'].values[sorted_indices]
         # get the image files that correspond to those uuids:
-        image_files = [os.path.join(root_directory, uuid + ".jpg") for uuid in uuids]
+        possible_image_files = [os.path.join(root_directory, uuid + ".jpg") for uuid in uuids]
 
-    return image_files
+        return [f for f in possible_image_files if f in image_files]
 
 def is_already_labeled(label):
     return (label != "") and (label is not None) and (not np.isnan(label))
@@ -217,16 +217,17 @@ def label_dataset(root_directory, skip_labeled_files = True):
         image = resize(image)
 
         if label is not None and not np.isnan(label):
-            cv2.putText(image, f"{label:.2f} || {prompt}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 100, 25), 2)
+            cv2.putText(image, f"{label:.2f} || {prompt}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 100, 25), 2)
         else:
             try:
                 # Get the predicted label from the database:
                 predicted_label = database.loc[database["uuid"] == uuid, "predicted_label"].values[0]
-                cv2.putText(image, f"predicted: {predicted_label:.2f} || {prompt}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 100, 25), 2)
+                cv2.putText(image, f"predicted: {predicted_label:.3f} || {prompt}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 100, 25), 2)
             except:
                 cv2.putText(image, f"{prompt}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 100, 25), 2)
                 
-        cv2.imshow("", image)
+        cv2.namedWindow("image", cv2.WINDOW_AUTOSIZE)  # Set the window property to autosize
+        cv2.imshow("image", image)  # Display the image in the "image" window
         key = cv2.waitKey(0)
 
         if ord('0') <= key <= ord('9'):
@@ -263,7 +264,7 @@ python 03_label_images.py
 """
 
 if __name__ == "__main__":
-    root_directory = "/home/rednax/SSD2TB/Fast_Datasets/PRN/SD_db/"
+    root_directory = "/home/rednax/SSD2TB/Fast_Datasets/SD/Labeling/datasets/todo"
     skip_labeled_files = 1
 
     label_dataset(root_directory, skip_labeled_files)

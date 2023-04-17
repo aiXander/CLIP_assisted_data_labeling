@@ -53,7 +53,7 @@ def rename_files(root_dir, output_folder,
 
 """
 cd ...
-python 01_rename_files.py --input_dir /home/.. --output_dir /home/..
+python 00_rename_files.py --input_dir /home/.. --output_dir /home/..
 
 """
 

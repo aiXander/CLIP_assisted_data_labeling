@@ -216,7 +216,7 @@ class CLIP_Feature_Dataset():
 """
 
 cd /home/rednax/SSD2TB/Xander_Tools/CLIP_assisted_data_labeling
-python embed_with_CLIP_02.py
+python 01_embed_with_CLIP.py
 
 """
 

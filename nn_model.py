@@ -4,7 +4,7 @@ from torch import nn
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class SimpleFC(nn.Module):
-    def __init__(self, input_size, hidden_sizes, output_size, dropout_prob=0.0):
+    def __init__(self, input_size, hidden_sizes, output_size, dropout_prob=0.0, verbose = 0):
         super(SimpleFC, self).__init__()
 
         layer_sizes = [input_size] + hidden_sizes + [output_size]
@@ -18,8 +18,9 @@ class SimpleFC(nn.Module):
 
         self.layers = nn.ModuleList(layers)
 
-        # Print the final network layout:
-        print(self)
+        if verbose > 0:
+            # Print the final network layout:
+            print(self)
 
     def forward(self, x):
         for layer in self.layers:

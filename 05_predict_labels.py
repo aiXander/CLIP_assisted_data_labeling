@@ -9,11 +9,11 @@ from tqdm import tqdm
 from nn_model import device, SimpleFC
 
 
-root_directory = '/home/rednax/SSD2TB/Fast_Datasets/PRN/SD_db/'
+root_directory = '/home/rednax/SSD2TB/Fast_Datasets/SD/Labeling/datasets/Infinity2'
 
-model_file = 'models/yng_wide_2023-04-17_05:02:39_580_20_0.0061.pkl'
+model_file = 'models/combo_2023-04-17_17:51:47_2207_40_0.0058.pkl'
 batch_size = 16
-copy_named_imgs_fraction = 1.0
+copy_named_imgs_fraction = 0.15   # fraction of images to copy to tmp_output directory with prepended prediction score
 
 output_dir = root_directory + '_predicted_scores'
 os.makedirs(output_dir, exist_ok=True)
@@ -79,8 +79,7 @@ for uuid in tqdm(img_files):
     # Get the row in the database that corresponds to this uuid:
     row = database.loc[database["uuid"] == uuid]
 
-    # Check if this uuid is already part of the labeled dataset:
-    try:
+    try: #if this uuid is already part of the labeled dataset, just skip
         if row['label'].values[0] is not None and not np.isnan(row['label'].values[0]):
             continue
     except:

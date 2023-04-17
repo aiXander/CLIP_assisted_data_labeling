@@ -17,41 +17,52 @@ python 04_train_model.py
 
 """
 
-train_data_dir = '/home/rednax/SSD2TB/Fast_Datasets/PRN/SD_db/'
-train_data_name = 'db_name'
-batch_size = 128
-lr = 0.001
+train_data_dir   = '/home/rednax/SSD2TB/Fast_Datasets/SD/Labeling/datasets'
+train_data_names = ['Infinity2', 'mj_filtered_uuid', 'todo']
+model_name       = 'combo'
+save_to_disk     = 1
+
+batch_size   = 128
+lr           = 0.001
 weight_decay = 0.001
-hidden_sizes = [264,128]
+print_network_layout = 0
+hidden_sizes = [264,128,64]
 dropout_prob = 0.5
 
 test_fraction = 0.01
-n_epochs = 20
+n_epochs      = 40
 
 # Fix all random seeds for reproducibility:
 random_seed = 42
 torch.manual_seed(random_seed)
 np.random.seed(random_seed)
 
-# 1. Load the labels and uuid's from labels.csv
-data = pd.read_csv(os.path.join(train_data_dir, train_data_name + '.csv'))
-
-# Drop all the rows where "label" is NaN:
-data = data.dropna(subset=["label"])
-
-# randomly shuffle the data:
-data = data.sample(frac=1).reset_index(drop=True)
-
-# 2. Load the feature vectors from disk (uuid.npy)
 features = []
 labels = []
 
-for index, row in data.iterrows():
-    uuid = row["uuid"]
-    label = row["label"]
-    feature = torch.load(f"{train_data_dir}/{train_data_name}/{uuid}.pt").flatten()
-    features.append(feature)
-    labels.append(label)
+for train_data_name in train_data_names:
+    n_samples = 0
+
+    # 1. Load the labels and uuid's from labels.csv
+    data = pd.read_csv(os.path.join(train_data_dir, train_data_name + '.csv'))
+    # Drop all the rows where "label" is NaN:
+    data = data.dropna(subset=["label"])
+    # randomly shuffle the data:
+    data = data.sample(frac=1).reset_index(drop=True)
+
+    # 2. Load the feature vectors from disk (uuid.npy)
+    for index, row in data.iterrows():
+        try:
+            uuid = row["uuid"]
+            label = row["label"]
+            feature = torch.load(f"{train_data_dir}/{train_data_name}/{uuid}.pt").flatten()
+            features.append(feature)
+            labels.append(label)
+            n_samples += 1
+        except:
+            continue
+
+    print(f"Loaded {n_samples} samples from {train_data_name}.")
 
 features = torch.stack(features, dim=0).to(device).float()
 labels = torch.tensor(labels).to(device).float()
@@ -68,9 +79,9 @@ class RegressionDataset(Dataset):
     def __getitem__(self, idx):
         return self.features[idx], self.labels[idx]
 
-dataset = RegressionDataset(features, labels)
+dataset    = RegressionDataset(features, labels)
 train_size = int((1-test_fraction) * len(dataset))
-test_size = len(dataset) - train_size
+test_size  = len(dataset) - train_size
 
 print(f"Training on {train_size} samples, testing on {test_size} samples.")
 
@@ -81,14 +92,14 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 # 4. Create the network
 input_size = features.shape[1]
 output_size = 1
-model = SimpleFC(input_size, hidden_sizes, output_size, dropout_prob=dropout_prob)
+model = SimpleFC(input_size, hidden_sizes, output_size, dropout_prob=dropout_prob, verbose = print_network_layout)
 model.train()
 model.to(device)
 
 # 5. Train the network for n epochs using Adam optimizer and standard regression loss, print test loss
 optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-criterion = nn.MSELoss()
 
+criterion = nn.MSELoss()
 losses = []
 
 def get_test_loss(model, test_loader, epoch):
@@ -103,7 +114,8 @@ def get_test_loss(model, test_loader, epoch):
             test_loss += loss.item()
 
     test_loss /= len(test_loader)
-    print(f"Epoch {epoch+1}, Test Loss: {test_loss:.4f}")
+    if epoch % 2 == 0:
+        print(f"Epoch {epoch+1}, Test MSE Loss: {test_loss:.4f}")
     return test_loss
 
 get_test_loss(model, test_loader, -1)
@@ -119,21 +131,20 @@ for epoch in range(n_epochs):
 
     losses.append(get_test_loss(model, test_loader, epoch))
 
-print(f"Best test loss: {min(losses):.4f} in epoch {np.argmin(losses)+1}")
+print(f"Best test mse loss: {min(losses):.4f} in epoch {np.argmin(losses)+1}")
 
 # print a graph of the losses
 import matplotlib.pyplot as plt
 plt.plot(losses)
 plt.savefig("losses.png")
 
-# Save the model
-n_train = len(train_dataset)
-timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H:%M:%S")
-model_name = f"{train_data_name}_{timestamp}_{n_train}_{n_epochs}_{losses[-1]:.4f}"
-os.makedirs("models", exist_ok=True)
-torch.save(model.state_dict(), f"models/{model_name}.pt")
+if save_to_disk: # Save the model
+    n_train = len(train_dataset)
+    timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H:%M:%S")
+    model_name = f"{model_name}_{timestamp}_{n_train}_{n_epochs}_{losses[-1]:.4f}"
+    os.makedirs("models", exist_ok=True)
 
-import pickle
-# Save the entire neural network model to disk
-with open(f"models/{model_name}.pkl", "wb") as file:
-    pickle.dump(model, file)
+    #torch.save(model.state_dict(), f"models/{model_name}.pt")
+    import pickle
+    with open(f"models/{model_name}.pkl", "wb") as file:
+        pickle.dump(model, file)

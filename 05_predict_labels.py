@@ -100,11 +100,16 @@ def predict_labels(args):
             continue
 
         feature_dict = torch.load(feature_path)
-        img_features = [feature_dict[crop_name] for crop_name in model.crop_names if crop_name in feature_dict.keys()]
-        img_features = torch.stack(img_features, dim=0)
+        try:
+            img_features = [feature_dict[crop_name] for crop_name in model.crop_names if crop_name in feature_dict.keys()]
+            img_features = torch.stack(img_features, dim=0)
+        except Exception as e:
+            print(f"WARNING: {e} for {uuid}, skipping this sample..")
+            continue
+
         n_features = img_features.shape[0]
         if n_features != len(model.crop_names):
-            print(f"WARNING: {n_features} crop features found for {uuid} (expected {len(model.crop_names)}), skipping this datasample...")
+            print(f"WARNING: {n_features} crop features found for {uuid} (expected {len(model.crop_names)}), skipping this sample...")
             continue
 
         features.append(img_features.flatten().to(device).float())

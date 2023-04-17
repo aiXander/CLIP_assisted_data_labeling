@@ -9,11 +9,11 @@ from tqdm import tqdm
 from nn_model import device, SimpleFC
 
 
-root_directory = '/home/rednax/SSD2TB/Fast_Datasets/SD/Labeling/datasets/Infinity2'
+root_directory = '/home/rednax/SSD2TB/Fast_Datasets/PRN/SD_db/'
 
-model_file = 'models/2023-04-16_02:18:36_1500_30_0.0053.pkl'
+model_file = 'models/yng_wide_2023-04-17_05:02:39_580_20_0.0061.pkl'
 batch_size = 16
-copy_named_imgs_fraction = 0.03
+copy_named_imgs_fraction = 1.0
 
 output_dir = root_directory + '_predicted_scores'
 os.makedirs(output_dir, exist_ok=True)
@@ -59,8 +59,10 @@ def predict(features, paths, uuids, database, row):
 label_file = os.path.join(os.path.dirname(root_directory), os.path.basename(root_directory) + ".csv")
 if os.path.exists(label_file):
     database = pd.read_csv(label_file)
+    print(f"Loaded existing database: {label_file}.\nDatabase contains {len(database)} entries")
 else:
     database = pd.DataFrame(columns=["uuid", "label", "timestamp"])
+    print(f"Created new database file at {label_file}")
 
 # add new column 'predicted_label' to the database if not yet present:
 if 'predicted_label' not in database.columns:

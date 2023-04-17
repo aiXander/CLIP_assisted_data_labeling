@@ -32,3 +32,5 @@ Metadata files (such as .txt prompt files or .npy files) that have the same base
 
 
 ### 1. 01_rename_files
+The labels are kept in a .csv file with a unique identifier linking to each image.
+To be sure to avoid name clashes, it is highly recommended to rename each img (and any metadata files with the same name) with a unique uuid

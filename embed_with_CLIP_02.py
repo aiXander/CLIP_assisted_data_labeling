@@ -4,108 +4,165 @@ import torch, os, time
 from tqdm import tqdm
 import random
 import argparse
+import torch
+from torch.utils.data import Dataset, DataLoader
+import torchvision.transforms as transforms
+import torch.multiprocessing as mp
+from torch.nn import functional as F
+import numpy as np
 
 class CLIP_Model:
-    def __init__(self, clip_model_name, clip_model_path = None, device = "cuda"):
-        self.device = device
+    def __init__(self, clip_model_name, clip_model_path = None):
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         clip_model_name, clip_model_pretrained_name = clip_model_name.split('/', 2)
 
         print(f"Loading CLIP model {clip_model_name}...")
-
-        self.tokenize = open_clip.get_tokenizer(clip_model_name)
+        #self.tokenize = open_clip.get_tokenizer(clip_model_name)
 
         self.clip_model, _, self.clip_preprocess = open_clip.create_model_and_transforms(
             clip_model_name, 
             pretrained=clip_model_pretrained_name, 
-            precision='fp16' if device == 'cuda' else 'fp32',
-            device=device,
+            precision='fp16' if self.device == 'cuda' else 'fp32',
+            device=self.device,
             jit=False,
             cache_dir=clip_model_path
         )
         self.clip_model = self.clip_model.to(self.device)
         self.clip_model.eval()
         self.img_resolution = 336 if '336' in clip_model_name else 224
-
+        
+        # slightly hacky way to get the mean and std of the normalization transform of the loaded clip model:
+        self.target_mean, self.target_std = None, None
+        for transform in self.clip_preprocess.transforms:
+            if isinstance(transform, transforms.Normalize):
+                self.target_mean = transform.mean
+                self.target_std = transform.std
+                break
+        
+        self.clip_tensor_preprocess = transforms.Compose([
+            transforms.Resize(self.img_resolution),
+            transforms.CenterCrop(self.img_resolution),
+            transforms.Normalize(
+                mean=self.target_mean,
+                std=self.target_std,
+            ),
+        ])
+        
         print(f"CLIP model {clip_model_name} with img_resolution {self.img_resolution} loaded!")
 
-    def image_to_features(self, list_of_pil_images: list) -> torch.Tensor:
-        images = [self.clip_preprocess(img) for img in list_of_pil_images]
-        images = torch.stack(images).to(self.device)
+    def pt_imgs_to_features(self, list_of_tensors: list) -> torch.Tensor:
+        preprocessed_images = [self.clip_tensor_preprocess(img) for img in list_of_tensors]        
+        preprocessed_images = torch.stack(preprocessed_images).to(self.device)
 
         with torch.no_grad(), torch.cuda.amp.autocast():
-            image_features = self.clip_model.encode_image(images)
+            image_features = self.clip_model.encode_image(preprocessed_images)
             image_features /= image_features.norm(dim=-1, keepdim=True)
+
         return image_features
     
+class CustomImageDataset(Dataset):
+    def __init__(self, image_paths, img_resolution, crop_names=["centre_crop", "square_padded_crop", "subcrops"]):
+        self.image_paths = image_paths
+        self.crop_names  = crop_names
+        self.device      = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.img_resolution = img_resolution
 
-class ImageEncoder:
-    """
-    Helper class to extract CLIP features from images   
-    """
-    def __init__(self, clip_model_name, clip_model_path = None):
-        self.model =  CLIP_Model(clip_model_name, clip_model_path = clip_model_path)
+    def __len__(self):
+        return len(self.image_paths)
 
-    def encode_image(self, pil_img: Image) -> torch.Tensor:
-        crops = self.extract_crops(pil_img)
-        features = self.model.image_to_features(crops)
-        return features
-
-    def extract_crops(self, pil_img: Image, 
-                      sample_fraction_save_to_disk = 0.0, # Save a fraction of crops to disk (can be used for debugging)
-                      ) -> list:
-        w, h = pil_img.size
-
-        # extract square centre crop:
-        centre_crop = pil_img.crop((w//2 - h//2, 0, w//2 + h//2, h))
-
-        # Create square padded image:
-        square_padded_img = Image.new("RGB", (max(w,h), max(w,h)), (0, 0, 0))
-        square_padded_img.paste(pil_img, (max(0, h-w)//2, max(0, w-h)//2))
-
-        # Create two small, square subcrops of different size (to be able to detect blurry images):
-        # This specific cropping method is highly experimental and can probably be improved
-
-        subcrop_area_fractions = [0.15, 0.1]
-        subcrop_w1 = int((w * h * subcrop_area_fractions[0]) ** 0.5)
-        subcrop_h1 = subcrop_w1
-        subcrop_w2 = int((w * h * subcrop_area_fractions[1]) ** 0.5)
-        subcrop_h2 = subcrop_w2
-
-        if w >= h: # wide / square img, crop left and right of centre
-            subcrop_center_h_1 = h//2
-            subcrop_center_h_2 = subcrop_center_h_1
-            subcrop_center_w_1 = w//4
-            subcrop_center_w_2 = w//4 * 3
-        else: # tall img, crop above and below centre
-            subcrop_center_w_1 = w//2
-            subcrop_center_w_2 = subcrop_center_w_1
-            subcrop_center_h_1 = h//4
-            subcrop_center_h_2 = h//4 * 3
-        
-        subcrop_1 = pil_img.crop((subcrop_center_w_1 - subcrop_w1//2, subcrop_center_h_1 - subcrop_h1//2, subcrop_center_w_1 + subcrop_w1//2, subcrop_center_h_1 + subcrop_h1//2))
-        subcrop_2 = pil_img.crop((subcrop_center_w_2 - subcrop_w2//2, subcrop_center_h_2 - subcrop_h2//2, subcrop_center_w_2 + subcrop_w2//2, subcrop_center_h_2 + subcrop_h2//2))
-
-        if random.random() < sample_fraction_save_to_disk: # Save all crops to disk:
-            img_res = self.model.img_resolution
-            centre_crop = centre_crop.resize((img_res,img_res))
-            square_padded_img = square_padded_img.resize((img_res,img_res))
-            subcrop_1 = subcrop_1.resize((img_res,img_res))
-            subcrop_2 = subcrop_2.resize((img_res,img_res))
-
-            timestamp = str(int(time.time()*100))
-            centre_crop.save(f"./{timestamp}_centre_crop.jpg")
-            square_padded_img.save(f"./{timestamp}_square_padded_img.jpg")
-            subcrop_1.save(f"./{timestamp}_subcrop_1.jpg")
-            subcrop_2.save(f"./{timestamp}_subcrop_2.jpg")
-
-        return [centre_crop, square_padded_img, subcrop_1, subcrop_2]
+    def __getitem__(self, idx):
+        try:
+            img_path = self.image_paths[idx]
+            pil_img = Image.open(img_path).convert('RGB')
+            crops, crop_names = self.extract_crops(pil_img)
+            return crops, crop_names, img_path
+        except:
+            print(f"Error loading image {img_path}")
+            return self.__getitem__(random.randint(0, len(self.image_paths)-1))
     
+    def extract_crops(self, pil_img: Image,
+                  sample_fraction_save_to_disk=0.0  # Save a fraction of crops to disk (can be used for debugging)
+                  ) -> list:
+        img = transforms.ToTensor()(pil_img).to(self.device).unsqueeze(0)
+        c, h, w = img.shape[1:]
+        crops, crop_names = [], []        
+        
+        if 'centre_crop' in self.crop_names:
+            crop_size = min(w, h)
+            centre_crop = img[:, :, h // 2 - crop_size // 2:h // 2 + crop_size // 2, w // 2 - crop_size // 2:w // 2 + crop_size // 2]
+            centre_crop = F.interpolate(centre_crop, size=self.img_resolution, mode='bilinear', align_corners=False)
+            crops.append(centre_crop)
+            crop_names.append("centre_crop")
+        
+        if 'square_padded_crop' in self.crop_names:
+            crop_size = max(w, h)
+            # Create square padded image:
+            square_padded_img = torch.zeros((1, c, crop_size, crop_size), device=self.device)
+            # paste the image in the centre of the square padded image:
+            start_h = (crop_size - h) // 2
+            start_w = (crop_size - w) // 2
+            square_padded_img[:, :, start_h:start_h + h, start_w:start_w + w] = img
+            # resize to self.img_resolution:
+            square_padded_img = F.interpolate(square_padded_img, size=self.img_resolution, mode='bilinear', align_corners=False)
+            crops.append(square_padded_img)
+            crop_names.append("square_padded_crop")
+
+        if 'subcrops' in self.crop_names:
+            # Create two small, square subcrops of different size (to be able to detect blurry images):
+            # This specific cropping method is highly experimental and can probably be improved
+            subcrop_area_fractions = [0.15, 0.1]
+            subcrop_w1 = int((w * h * subcrop_area_fractions[0]) ** 0.5)
+            subcrop_h1 = subcrop_w1
+            subcrop_w2 = int((w * h * subcrop_area_fractions[1]) ** 0.5)
+            subcrop_h2 = subcrop_w2
+
+            if w >= h:  # wide / square img, crop left and right of centre
+                subcrop_center_h_1 = h // 2
+                subcrop_center_h_2 = subcrop_center_h_1
+                subcrop_center_w_1 = w // 4
+                subcrop_center_w_2 = w // 4 * 3
+            else:  # tall img, crop above and below centre
+                subcrop_center_w_1 = w // 2
+                subcrop_center_w_2 = subcrop_center_w_1
+                subcrop_center_h_1 = h // 4
+                subcrop_center_h_2 = h // 4 * 3
+
+            subcrop_1 = img[:, :, subcrop_center_h_1 - subcrop_h1 // 2:subcrop_center_h_1 + subcrop_h1 // 2,
+                    subcrop_center_w_1 - subcrop_w1 // 2:subcrop_center_w_1 + subcrop_w1 // 2]
+            subcrop_2 = img[:, :, subcrop_center_h_2 - subcrop_h2 // 2:subcrop_center_h_2 + subcrop_h2 // 2,
+                    subcrop_center_w_2 - subcrop_w2 // 2:subcrop_center_w_2 + subcrop_w2 // 2]
+            
+            # resize to self.img_resolution:
+            subcrop_1 = F.interpolate(subcrop_1, size=self.img_resolution, mode='bilinear', align_corners=False)
+            subcrop_2 = F.interpolate(subcrop_2, size=self.img_resolution, mode='bilinear', align_corners=False)
+
+            crops.append(subcrop_1)
+            crops.append(subcrop_2)
+            crop_names.append(f"subcrop_1_{subcrop_area_fractions[0]}")
+            crop_names.append(f"subcrop_2_{subcrop_area_fractions[1]}")
+
+        if random.random() < sample_fraction_save_to_disk:
+            timestamp = str(int(time.time()*100))
+            for crop, crop_name in zip(crops, crop_names):
+                crop = crop.squeeze(0).permute(1, 2, 0).cpu().numpy()
+                crop = (crop * 255).astype(np.uint8)
+                crop = Image.fromarray(crop)
+                crop.save(f"./{timestamp}_{crop_name}.jpg")
+
+        # stack the crops into a single tensor:
+        crops = torch.cat(crops, dim=0)
+
+        return crops, crop_names
+
+
+        
 class CLIP_Feature_Dataset():
-    def __init__(self, root_dir, clip_model_name, clip_model_path = None, force_reencode = False, shuffle_filenames = True):
+    def __init__(self, root_dir, clip_model_name, batch_size, clip_model_path = None, force_reencode = False, shuffle_filenames = True):
         self.root_dir = root_dir
         self.force_reencode = force_reencode
         self.img_extensions = (".png", ".jpg", ".jpeg", ".JPEG", ".JPG", ".PNG")
-        self.img_encoder = ImageEncoder(clip_model_name, clip_model_path = clip_model_path)
+        self.batch_size = batch_size
 
         print("Searching for images..")
         self.img_filepaths = [os.path.join(root, name) for root, dirs, files in os.walk(root_dir) for name in files if name.endswith(self.img_extensions)]
@@ -116,6 +173,13 @@ class CLIP_Feature_Dataset():
             self.img_filepaths.sort()
         print(f"Found {len(self.img_filepaths)} images in {root_dir}")
 
+        # Get ready for processing:
+        self.img_encoder = CLIP_Model(clip_model_name, clip_model_path)
+        self.img_dataset = CustomImageDataset(self.img_filepaths, self.img_encoder.img_resolution)
+        self.dataloader = DataLoader(self.img_dataset, 
+                                     batch_size=batch_size, shuffle=False, 
+                                     num_workers=4)
+
     def __len__(self):
         return len(self.img_filepaths)
 
@@ -123,22 +187,27 @@ class CLIP_Feature_Dataset():
         n_embedded, n_skipped = 0, 0
         print(f"Embedding dataset of {len(self.img_filepaths)} images...")
 
-        for img_filepath in tqdm(self.img_filepaths):
-            base_img_path = os.path.splitext(img_filepath)[0]
-            feature_save_path = base_img_path + ".pt"
+        for batch in tqdm(self.dataloader):
+            crops, crop_names_batch, img_paths = batch
+            base_img_paths     = [os.path.splitext(img_path)[0] for img_path in img_paths]
+            feature_save_paths = [base_img_path + ".pt" for base_img_path in base_img_paths]
+            crop_names_batch   = [crop_names for crop_names in crop_names_batch]
+            crops_stacked = crops.view(-1, *crops.shape[2:])
+            current_batch_size = crops_stacked.shape[0]
 
-            if not os.path.exists(feature_save_path) or self.force_reencode:
-                try:
-                    img = Image.open(img_filepath)
-                    features = self.img_encoder.encode_image(img)
-                    torch.save(features, feature_save_path)
-                    n_embedded += 1
-                except Exception as e:
-                    print(f"Could not encode image: {img_filepath}, error: {e}")
+            # If at least one of the feature vectors does not exist, or if we want to re-encode the batch:
+            if self.force_reencode or not all([os.path.exists(feature_save_path) for feature_save_path in feature_save_paths]):
+                features = self.img_encoder.pt_imgs_to_features(crops_stacked)
+                # split the features back into the crops batch_size:
+                features = features.view(current_batch_size, -1, *features.shape[1:])
+                # save the features as a dictionary:
+                for feature, feature_save_path, crop_names in zip(features, feature_save_paths, crop_names_batch):
+                    torch.save(feature, feature_save_path)
+                n_embedded += current_batch_size
             else:
-                n_skipped += 1
+                n_skipped += current_batch_size
 
-            if (n_embedded + n_skipped) % 500 == 0:
+            if (n_embedded + n_skipped) % 1000 == 0:
                 print(f"Skipped {n_skipped} images, embedded {n_embedded} images")
 
         print("--- Feature encoding done!")
@@ -152,10 +221,12 @@ python embed_with_CLIP_02.py
 """
 
 if __name__ == "__main__":
-    root_dir = "/home/rednax/2TBHDD/Datasets/prn/fixed_database"
+
+    root_dir = "/home/rednax/SSD2TB/Fast_Datasets/PRN/SD_db/"
     clip_model_name = "ViT-L-14-336/openai"  # "ViT-L-14/openai" #SD 1.x  //  "ViT-H-14/laion2b_s32b_b79k" #SD 2.x
-    #clip_model_path = "/home/xander/Projects/cog/cache"
-    clip_model_path = None
+    batch_size = 12
+    force_reencode = 0
     
-    dataset = CLIP_Feature_Dataset(root_dir, clip_model_name, clip_model_path = clip_model_path, force_reencode = False)
+    mp.set_start_method('spawn')
+    dataset = CLIP_Feature_Dataset(root_dir, clip_model_name, batch_size, clip_model_path = None, force_reencode = force_reencode)
     dataset.process()

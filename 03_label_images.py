@@ -79,21 +79,18 @@ def create_sorting_window():
 
 
 
-def resize(cv_img, size = 1024):
-    canvas = Image.new('RGB', (size, size), (0, 0, 0))
+def resize(cv_img, size = (1706, 960)):
+    canvas = Image.new('RGB', size, (0, 0, 0))
 
-    # Resize the image:
+    # Resize the image so it fits on the canvas:
     height, width, _ = cv_img.shape
-    if height > width:
-        ratio = size / height
-    else:
-        ratio = size / width
+    ratio = min(size[0] / width, size[1] / height)
 
     cv_img = cv2.resize(cv_img, (int(width * ratio), int(height * ratio)))
 
     # paste the image onto the canvas:
     height, width, _ = cv_img.shape
-    canvas.paste(Image.fromarray(cv_img), (int((size - width) / 2), int((size - height) / 2)))
+    canvas.paste(Image.fromarray(cv_img), (int((size[0] - width) / 2), int((size[1] - height) / 2)))
 
     return np.array(canvas)
 
@@ -208,6 +205,7 @@ def label_dataset(root_directory, skip_labeled_files = True):
 
     while True:
         image_file = image_files[current_index]
+        print(image_file)
         uuid = os.path.basename(image_file).split(".")[0]
         label = load(uuid, database)
         if (label is not None) and (not np.isnan(label)) and skip_labeled_files:
@@ -215,9 +213,9 @@ def label_dataset(root_directory, skip_labeled_files = True):
             continue
 
         skip_labeled_files = False
-
         image, prompt = load_image_and_prompt(uuid, root_directory)
         image = resize(image)
+
         if label is not None and not np.isnan(label):
             cv2.putText(image, f"{label:.2f} || {prompt}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 100, 25), 2)
         else:
@@ -265,7 +263,7 @@ python 03_label_images.py
 """
 
 if __name__ == "__main__":
-    root_directory = "/home/rednax/SSD2TB/Fast_Datasets/SD/Labeling/datasets/Infinity2"
+    root_directory = "/home/rednax/SSD2TB/Fast_Datasets/PRN/SD_db/"
     skip_labeled_files = 1
 
     label_dataset(root_directory, skip_labeled_files)

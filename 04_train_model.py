@@ -17,8 +17,8 @@ python 04_train_model.py
 
 """
 
-train_data_dir = '/home/rednax/SSD2TB/Fast_Datasets/SD/Labeling/datasets'
-train_data_name = 'mj_filtered_uuid'
+train_data_dir = '/home/rednax/SSD2TB/Fast_Datasets/PRN/SD_db/'
+train_data_name = 'db_name'
 batch_size = 128
 lr = 0.001
 weight_decay = 0.001
@@ -26,7 +26,7 @@ hidden_sizes = [264,128]
 dropout_prob = 0.5
 
 test_fraction = 0.01
-n_epochs = 30
+n_epochs = 20
 
 # Fix all random seeds for reproducibility:
 random_seed = 42
@@ -129,7 +129,7 @@ plt.savefig("losses.png")
 # Save the model
 n_train = len(train_dataset)
 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H:%M:%S")
-model_name = f"{timestamp}_{n_train}_{n_epochs}_{losses[-1]:.4f}"
+model_name = f"{train_data_name}_{timestamp}_{n_train}_{n_epochs}_{losses[-1]:.4f}"
 os.makedirs("models", exist_ok=True)
 torch.save(model.state_dict(), f"models/{model_name}.pt")
 

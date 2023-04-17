@@ -2,22 +2,23 @@ import os
 import shutil
 import uuid
 import argparse
+from tqdm import tqdm
 
 def rename_files(root_dir, output_folder, 
                  mode = 'copy',  # ['rename', 'copy']
                  ):
     
     '''
-
     Rename all the files in the root_dir with a unique string identifier
-    
     '''
 
     os.makedirs(output_folder, exist_ok=True)
-    print("Running...")
-    
     counter, skipped = 0, 0
+    print_verb = "Copied" if mode == 'copy' else "Renamed"
+
     for subdir, dirs, files in os.walk(root_dir):
+        print(f"Parsing {subdir}, subdirs: {dirs}, n_files: {len(files)}..")            
+
         # Get all the unique filenames (without the extension) and store a list of present extensions for each one:
         unique_filenames = {}
         for file in files:
@@ -26,28 +27,33 @@ def rename_files(root_dir, output_folder,
                 unique_filenames[filename] = []
             unique_filenames[filename].append(file_extension)
 
-        for filename in unique_filenames.keys():            
+        for filename in tqdm(unique_filenames.keys()):            
             unique_id = str(uuid.uuid4().hex)
             extension_list = unique_filenames[filename]
 
             for ext in extension_list:
-                orig_filename = os.path.join(root_dir, subdir, filename + ext)
-                new_filename = os.path.join(output_folder, unique_id + ext)
+                new_folder  = subdir.replace(root_dir, output_folder)
+                orig_filename = os.path.join(subdir, filename + ext)
+                new_filename = os.path.join(new_folder, unique_id + ext)
 
-                if mode == 'rename':
-                    os.rename(orig_filename, new_filename)
-                elif mode == 'copy':
-                    shutil.copy(orig_filename, new_filename)
+                try:
+                    if mode == 'rename':
+                        os.rename(orig_filename, new_filename)
+                    elif mode == 'copy':
+                        os.makedirs(os.path.dirname(new_filename), exist_ok=True)
+                        shutil.copy(orig_filename, new_filename)
+                except:
+                    print(f"Error on {orig_filename}")
+                    skipped += 1
+                    continue
 
             counter += 1
-        if counter % 500 == 0:
-            print(f"Renamed {counter} files, skipped {skipped}")
-    
-    print(f"Renamed {counter} files, skipped {skipped}")
+        
+        print(f"{print_verb} {counter} files, skipped {skipped}")
 
 """
 cd ...
-python 01_rename_files.py --input_dir /home/rednax/2TBHDD/Datasets/Infinity/Infinity --output_dir /home/rednax/2TBHDD/Datasets/Infinity/Infinity2
+python 01_rename_files.py --input_dir /home/.. --output_dir /home/..
 
 """
 
@@ -68,8 +74,7 @@ if __name__ == "__main__":
         args.mode = 'rename'
 
     if args.mode == 'rename':
-        for i in range(5):
-            print("### WARNING ###")
+        print("####### WARNING #######")
         print(f"you are about to rename all the files inside {args.input_dir}, are you sure you want to do this?")
         answer = input("Type 'yes' to continue: ")
         if answer != 'yes':

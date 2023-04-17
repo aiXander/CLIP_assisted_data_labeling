@@ -1,4 +1,5 @@
 models/*
+CLIP_cmds.txt
 cmds.txt
 losses.png
 __pycache__/

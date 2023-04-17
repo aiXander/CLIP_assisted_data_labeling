@@ -2,24 +2,41 @@ import os
 import numpy as np
 import pandas as pd
 import torch, shutil
-from torch.utils.data import DataLoader, Dataset
 import pickle, time
 import random
 from tqdm import tqdm
 from nn_model import device, SimpleFC
+import argparse
 
 
-root_directory = '/home/rednax/SSD2TB/Fast_Datasets/SD/Labeling/datasets/Infinity2'
+parser = argparse.ArgumentParser()
+parser.add_argument('--root_dir',   type=str, help='Root directory of the dataset')
+parser.add_argument('--model_file', type=str, help='Path to the model file (.pkl)')
+parser.add_argument('--batch_size', type=int, default=16, help='Batch size for predicting')
+parser.add_argument('--copy_imgs_fraction', type=float, default=0.01, help='Fraction of images to copy to tmp_output directory with prepended prediction score')
+args = parser.parse_args()
 
-model_file = 'models/combo_2023-04-17_17:51:47_2207_40_0.0058.pkl'
-batch_size = 16
-copy_named_imgs_fraction = 0.15   # fraction of images to copy to tmp_output directory with prepended prediction score
+############################################################################
+############################################################################
 
-output_dir = root_directory + '_predicted_scores'
+def find_model(model_name, model_dir = "models"):
+    model_files = os.listdir(model_dir)
+    for model_file in model_files:
+        if model_name in model_file:
+            # return the absolute path to the model file:
+            return os.path.join(model_dir, model_file)
+    return None
+
+args.model_file = find_model(args.model_file)
+if args.model_file is None:
+    print(f"ERROR: could not find model file {args.model_file}!")
+    exit()
+
+output_dir = args.root_dir + '_predicted_scores'
 os.makedirs(output_dir, exist_ok=True)
 
 
-with open(model_file, "rb") as file:
+with open(args.model_file, "rb") as file:
     model = pickle.load(file)
 
 def predict(features, paths, uuids, database, row):
@@ -47,7 +64,7 @@ def predict(features, paths, uuids, database, row):
             database.loc[index_to_update, 'predicted_label'] = predicted_score
             database.loc[index_to_update, 'timestamp'] = current_timestamp
 
-        if random.random() < copy_named_imgs_fraction:
+        if random.random() < args.copy_imgs_fraction:
 
             # Copy the image to the output directory:
             img_path = paths[i]
@@ -56,7 +73,7 @@ def predict(features, paths, uuids, database, row):
 
     return database
 
-label_file = os.path.join(os.path.dirname(root_directory), os.path.basename(root_directory) + ".csv")
+label_file = os.path.join(os.path.dirname(args.root_dir), os.path.basename(args.root_dir) + ".csv")
 if os.path.exists(label_file):
     database = pd.read_csv(label_file)
     print(f"Loaded existing database: {label_file}.\nDatabase contains {len(database)} entries")
@@ -69,7 +86,7 @@ if 'predicted_label' not in database.columns:
     database['predicted_label'] = np.nan
 
 # Loop over all *.jpg files in the input_directory that are not yet part of the labeled dataset:
-img_files = [f.split('.')[0] for f in os.listdir(root_directory) if f.endswith('.jpg')]
+img_files = [f.split('.')[0] for f in os.listdir(args.root_dir) if f.endswith('.jpg')]
 print(f"Predicting labels for {len(img_files)} images...")
 
 features, paths, uuids = [], [], []
@@ -85,8 +102,8 @@ for uuid in tqdm(img_files):
     except:
         pass
 
-    img_path = os.path.join(root_directory, uuid + '.jpg')
-    feature_path = os.path.join(root_directory, uuid + '.pt')
+    img_path = os.path.join(args.root_dir, uuid + '.jpg')
+    feature_path = os.path.join(args.root_dir, uuid + '.pt')
 
     if not os.path.exists(feature_path): #if there's no CLIP embbeding, just skip
         n_skips += 1
@@ -97,10 +114,10 @@ for uuid in tqdm(img_files):
     paths.append(img_path)
     uuids.append(uuid)
 
-    if len(paths) == batch_size:
+    if len(paths) == args.batch_size:
         features = torch.stack(features, dim=0).to(device).float()
         database = predict(features, paths, uuids, database, row)
-        n_predictions += batch_size
+        n_predictions += args.batch_size
         features, paths, uuids = [], [], []
     if n_predictions % 100 == 0:
         database.to_csv(label_file, index=False)

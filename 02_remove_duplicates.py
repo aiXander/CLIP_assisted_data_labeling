@@ -1,8 +1,7 @@
 import os
 import shutil
 import torch
-import numpy as np
-from pathlib import Path
+import argparse
 from tqdm import tqdm
 
 def get_paths_and_embeddings(root_dir):
@@ -93,17 +92,11 @@ def fix_duplicate(duplicate_index, img_paths, outdir, mode = 'copy'):
     return
     
 
-
-"""
-
-cd /home/rednax/SSD2TB/Xander_Tools/CLIP_assisted_data_labeling
-python 02_remove_duplicates.py
-
-"""
-
 if __name__ == '__main__':
-    root_dir = "/home/rednax/SSD2TB/Fast_Datasets/SD/Labeling/datasets/todo"
-    threshold = 0.9
-    fix_mode = 'move'  # ['copy', 'move']
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--root_dir', type=str, help='Root directory of the dataset')
+    parser.add_argument('--threshold', type=float, default=0.95, help='Cosine-similarity threshold for near-duplicate detection')
+    parser.add_argument('--fix_mode', type=str, default='copy', help='Fix mode: copy / move. Use copy to test the script, move after')
+    args = parser.parse_args()
 
-    find_near_duplicates(root_dir=root_dir, threshold=threshold, fix_mode=fix_mode)
+    find_near_duplicates(root_dir=args.root_dir, threshold=args.threshold, fix_mode=args.fix_mode)

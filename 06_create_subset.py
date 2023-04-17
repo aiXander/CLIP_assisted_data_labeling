@@ -7,18 +7,15 @@ import pandas as pd
 def copy_data(input_dir, min_score, extensions = ['.jpg'], output_suffix = '_subset'):
     '''
     Copy all the files in the root_dir based on predicted label
-    
     '''
 
     output_suffix = f'_>{min_score:.2f}' + output_suffix
-
     output_folder = os.path.join(input_dir + output_suffix)
     os.makedirs(output_folder, exist_ok=True)
-
+    
+    # Get all the rows where the predicted label is above the threshold:
     database_path = os.path.join(os.path.dirname(input_dir), os.path.basename(input_dir) + ".csv")
     database = pd.read_csv(database_path)
-
-    # Get all the rows where the predicted label is above the threshold:
     database = database.loc[database["predicted_label"] >= min_score]
     
     # Loop over the uuids in the database and copy the corresponding files to the output folder:
@@ -40,12 +37,6 @@ def copy_data(input_dir, min_score, extensions = ['.jpg'], output_suffix = '_sub
     # append the total number of imgs to the output foldername:
     os.rename(output_folder, output_folder + f"_{n_img_files}_imgs")
 
-'''
-
-cd /home/xander/Projects/cog/CLIP_active_learning_classifier/CLIP_assisted_data_labeling
-python 06_create_subset.py --input_dir /data/datasets/midjourney --min_score 0.35
-
-'''
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

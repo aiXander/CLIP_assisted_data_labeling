@@ -213,20 +213,16 @@ class CLIP_Feature_Dataset():
         print("--- Feature encoding done!")
         print(f"Saved {len(self.img_filepaths)} feature vectors of shape {str(features.shape)} to {self.root_dir}")
 
-"""
 
-cd /home/rednax/SSD2TB/Xander_Tools/CLIP_assisted_data_labeling
-python 01_embed_with_CLIP.py
-
-"""
 
 if __name__ == "__main__":
-
-    root_dir = "/home/rednax/SSD2TB/Fast_Datasets/PRN/SD_db/"
-    clip_model_name = "ViT-L-14-336/openai"  # "ViT-L-14/openai" #SD 1.x  //  "ViT-H-14/laion2b_s32b_b79k" #SD 2.x
-    batch_size = 12
-    force_reencode = 0
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--root_dir', type=str, help='Root directory of the dataset')
+    parser.add_argument('--clip_model_name', type=str, default = "ViT-L-14-336/openai", help='Name of the open_clip model, see https://github.com/mlfoundations/open_clip/tree/main/src/open_clip/model_configs')
+    parser.add_argument('--batch_size', type=int, default=12, help='Number of images to encode at once')
+    parser.add_argument('--force_reencode', action='store_true', help='Force CLIP re-encoding of all images (default: False)')
+    args = parser.parse_args()
     
     mp.set_start_method('spawn')
-    dataset = CLIP_Feature_Dataset(root_dir, clip_model_name, batch_size, clip_model_path = None, force_reencode = force_reencode)
+    dataset = CLIP_Feature_Dataset(args.root_dir, args.clip_model_name, args.batch_size, clip_model_path = None, force_reencode = args.force_reencode)
     dataset.process()

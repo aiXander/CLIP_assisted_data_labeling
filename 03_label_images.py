@@ -3,7 +3,7 @@ import os
 import glob
 import time
 import random
-from pathlib import Path
+import argparse
 import pandas as pd
 from PIL import Image
 import numpy as np
@@ -256,15 +256,10 @@ def label_dataset(root_directory, skip_labeled_files = True):
     cv2.destroyAllWindows()
 
 
-"""
-
-cd /home/rednax/SSD2TB/Xander_Tools/CLIP_assisted_data_labeling
-python 03_label_images.py
-
-"""
-
 if __name__ == "__main__":
-    root_directory = "/home/rednax/SSD2TB/Fast_Datasets/SD/Labeling/datasets/todo"
-    skip_labeled_files = 1
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--root_dir', type=str, help='Root directory of the dataset')
+    parser.add_argument('--skip_labeled_files', action='store_true', help='Skip files that are already labeled')
+    args = parser.parse_args()
 
-    label_dataset(root_directory, skip_labeled_files)
+    label_dataset(args.root_directory, args.skip_labeled_files)

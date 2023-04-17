@@ -57,8 +57,6 @@ python 00_rename_files.py --input_dir /home/.. --output_dir /home/..
 
 """
 
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_dir', type=str, help='Input directory')

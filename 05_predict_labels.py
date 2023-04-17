@@ -51,15 +51,15 @@ def predict(features, paths, uuids, database, row, model, output_dir, args):
 
 def predict_labels(args):
 
-    args.model_file = find_model(args.model_file)
-    if args.model_file is None:
-        print(f"ERROR: could not find model file {args.model_file}!")
+    model_file = find_model(args.model_file)
+    if model_file is None:
+        print(f"ERROR: could not find model file {model_file}!")
         exit()
 
     output_dir = args.root_dir + '_predicted_scores'
     os.makedirs(output_dir, exist_ok=True)
 
-    with open(args.model_file, "rb") as file:
+    with open(model_file, "rb") as file:
         model = pickle.load(file)
 
     label_file = os.path.join(os.path.dirname(args.root_dir), os.path.basename(args.root_dir) + ".csv")
@@ -133,4 +133,11 @@ if __name__ == "__main__":
     parser.add_argument('--copy_imgs_fraction', type=float, default=0.01, help='Fraction of images to copy to tmp_output directory with prepended prediction score')
     args = parser.parse_args()
 
-    predict_labels(args)
+    # recursively apply the model to all subdirectories:
+    for root, dirs, files in os.walk(args.root_dir):
+        jpg_files = [f for f in files if f.endswith('.jpg')]
+
+        if len(jpg_files) > 0 and "_predicted_scores" not in root:
+            args.root_dir = root
+            print(f"\n\nPredicting labels for {root}...")
+            predict_labels(args)

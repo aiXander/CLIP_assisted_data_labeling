@@ -35,6 +35,8 @@ mogrify -format jpg *.webp && rm *.webp
 
 Metadata files (such as .txt prompt files or .npy files) that have the same basename (but different extension) as the image files can remain and will be handled correctly.
 
+In all following scripts, the root_dir is the main directory where your training images live.
+Most scripts should also work if this root_dir has subfolders with eg different subsets of the data.
 
 ### 00_rename_files.py
 The labels are kept in a .csv file with a unique identifier linking to each image.
@@ -52,10 +54,16 @@ For each image, 4 crops are taken:
 Specify a cosine-similarity threshold and remove duplicate images from the dataset
 
 ### 03_label_images.py
+This script only works on a single image folder with no subfolders!
 Simple labeling interface using opencv that support re-ordering the images based on predicted labels
+Label an image using they numkeys [0-9] on the keyboard
+Go forward and backwards using the arrow keys <-- / -->
 
 ### 04_train_model.py
 Train a simple FC-neural network based on the flattened CLIP-crop embeddings to regress / classify the image labels
+Flow:
+	- first optimize hyperparameters using eg --test_fraction 0.15
+	- finally do a final training run using all the data
 
 ### 05_predict_labels.py
 Predict the labels for the entire image dataset using the trained model

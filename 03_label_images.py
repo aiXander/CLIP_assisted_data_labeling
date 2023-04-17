@@ -113,7 +113,7 @@ def relabel_image(uuid, label, database):
 
 
 
-def re_order_images(image_files, database):
+def re_order_images(image_files, database, root_directory):
     '''
     Takes the pandas dataframe database and sorts the image files according to the "predicted_label" column.
     '''
@@ -199,7 +199,7 @@ def label_dataset(root_directory, skip_labeled_files = True):
     print(f"Found {labeled_count} labeled images ({len(image_files)} total) in {label_file}")
 
     database = fix_database(database)
-    image_files = re_order_images(image_files, database)
+    image_files = re_order_images(image_files, database, root_directory)
     current_index = 0
     extra_labels = 0
 

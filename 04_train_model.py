@@ -50,6 +50,10 @@ def train(args, crop_names):
     features = torch.stack(features, dim=0).to(device).float()
     labels = torch.tensor(labels).to(device).float()
 
+    print("\n--- All data loaded ---")
+    print("Features shape:", features.shape)
+    print("Labels shape:", labels.shape)
+
     # 2. Create train and test dataloaders
     class RegressionDataset(Dataset):
         def __init__(self, features, labels):
@@ -73,9 +77,7 @@ def train(args, crop_names):
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     # 3. Create the network
-    input_size = features.shape[1]
-    output_size = 1
-    model = SimpleFC(input_size, args.hidden_sizes, output_size, 
+    model = SimpleFC(features.shape[1], args.hidden_sizes, 1, 
                     crop_names = crop_names,
                     dropout_prob=args.dropout_prob, 
                     verbose = args.print_network_layout)
@@ -85,11 +87,11 @@ def train(args, crop_names):
     # 4. Train the network for n epochs using Adam optimizer and standard regression loss
     optimizer = Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     criterion = nn.MSELoss()
-    losses    = []
+    losses    = [[], []] # train, test losses
 
     def get_test_loss(model, test_loader, epoch):
         if len(test_loader) == 0:
-            return 0.0
+            return -1.0
         model.eval()
         test_loss = 0.0
         with torch.no_grad():
@@ -99,32 +101,56 @@ def train(args, crop_names):
                 test_loss += loss.item()
 
         test_loss /= len(test_loader)
-        if epoch % 2 == 0:
-            print(f"Epoch {epoch+1}, Test MSE Loss: {test_loss:.4f}")
         return test_loss
+    
+    def plot_losses(losses, y_axis_percentile_cutoff = 99.75, include_y_zero = 1):
+        plt.figure(figsize=(16, 8))
+        plt.plot(losses[0], label="Train")
+        plt.plot(losses[1], label="Test")
+        plt.axhline(y=min(losses[1]), color='r', linestyle='--', label="Best test loss")
+        all_losses = losses[0] + losses[1]
+        if include_y_zero:
+            plt.ylim(0, np.percentile(all_losses, y_axis_percentile_cutoff))
+        else:
+            plt.ylim(np.min(all_losses), np.percentile(all_losses, y_axis_percentile_cutoff))
+        plt.xlabel("Epoch")
+        plt.ylabel("MSE loss on test-set")
+        plt.legend()
+        plt.savefig("losses.png")
+        plt.close()
 
-    get_test_loss(model, test_loader, -1)
+    test_loss = get_test_loss(model, test_loader, -1)
+    print(f"\nBefore training, test mse-loss: {test_loss:.4f}")
 
     for epoch in range(args.n_epochs):
         model.train()
+        train_loss = 0.0
         for features, labels in train_loader:
             optimizer.zero_grad()
             outputs = model(features)
             loss = criterion(outputs.squeeze(), labels)
             loss.backward()
             optimizer.step()
+            train_loss += loss.item()
 
-        losses.append(get_test_loss(model, test_loader, epoch))
+        train_loss = train_loss / len(train_loader)
+        test_loss = get_test_loss(model, test_loader, epoch)
+        losses[0].append(train_loss)
+        losses[1].append(test_loss)
+        if epoch % 2 == 0:
+            test_str = f", test mse: {test_loss:.4f}" if test_loss > 0 else ""
+            print(f"Epoch {epoch+1} / {args.n_epochs}, train-mse: {train_loss:.4f}{test_str}")
+        if epoch % (args.n_epochs // 10) == 0:
+            plot_losses(losses)
 
     # Report:
-    print(f"Best test mse loss: {min(losses):.4f} in epoch {np.argmin(losses)+1}")
-    plt.plot(losses)
-    plt.savefig("losses.png")
+    print(f"---> Best test mse loss: {min(losses[1]):.4f} in epoch {np.argmin(losses[1])+1}")
+    plot_losses(losses)
 
     if not args.dont_save: # Save the model
-        n_train = len(train_dataset)
+        n_train = len(train_dataset) / 1000
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H:%M:%S")
-        model_save_name = f"{args.model_name}_{timestamp}_{n_train}_{args.n_epochs}_{losses[-1]:.4f}"
+        model_save_name = f"{args.model_name}_{timestamp}_{n_train:.1f}k_imgs_{args.n_epochs}_epochs_{losses[1][-1]:.4f}_mse"
         os.makedirs("models", exist_ok=True)
 
         #torch.save(model.state_dict(), f"models/{model_save_name}.pt")
@@ -132,7 +158,7 @@ def train(args, crop_names):
         with open(f"models/{model_save_name}.pkl", "wb") as file:
             pickle.dump(model, file)
 
-        print("Model saved as:\n", model_save_name)
+        print("Final model saved as:\n", f"models/{model_save_name}.pkl")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -144,8 +170,8 @@ if __name__ == "__main__":
     parser.add_argument('--dont_save', action='store_true', help='Force CLIP re-encoding of all images (default: False)')
 
     # Training args:
-    parser.add_argument('--test_fraction', type=float, default=0.05,  help='Fraction of the training data to use for testing')
-    parser.add_argument('--n_epochs',      type=int,   default=30,    help='Number of epochs to train for')
+    parser.add_argument('--test_fraction', type=float, default=0.0,  help='Fraction of the training data to use for testing')
+    parser.add_argument('--n_epochs',      type=int,   default=100,    help='Number of epochs to train for')
     parser.add_argument('--batch_size',    type=int,   default=128,   help='Batch size for training')
     parser.add_argument('--lr',            type=float, default=0.001, help='Learning rate')
     parser.add_argument('--weight_decay',  type=float, default=0.001, help='Weight decay for the Adam optimizer (default: 0.001)')

@@ -1,5 +1,6 @@
 # CLIP_assisted_data_labeling
-Repository to quickly label/filter lots of images using CLIP embeddings + active learning
+Python toolkit to quickly label/filter lots of images using CLIP embeddings + active learning.
+Main use-case is to filter large imagedatasets that contain lots of bad images you don't want to train on.
 
 ## Overview:
 0. Create unique uuid's for each img in the root_dir
@@ -12,16 +13,16 @@ Labeling supports ordering the images in one of three ways:
     - worst predicted first
     - median predicted first (start labeling where there's most uncertainty)
 4. Train a NN regressor/classifier on the current database (CLIP-embedding --> label)
-5. Predict the labels for all the unlabeled images
-	
---> Go back to (3) and iterate until satisfied with the predicted labels
+5. Predict the labels for all the unlabeled images	
+
+	--> Go back to (3) and iterate until satisfied with the predicted labels
 6. Filter your dataset using the predicted labels
 
 
 ## Detailed walkthrough:
 
 ### 0. Preprocessing your data
-Best practice is to start by converting all you images to the same format eg (.jpg), using something like:
+Best practice is to start by converting all your images to the same format eg (.jpg), using something like:
 
 ```
 cd ../root_of_your_img_dir/

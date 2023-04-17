@@ -21,8 +21,8 @@ def get_paths_and_embeddings(root_dir):
             extension_list = unique_filenames[filename]
             if '.jpg' in extension_list and '.pt' in extension_list:
                 path = os.path.join(subdir, filename + '.jpg')
-                embedding = torch.load(os.path.join(subdir, filename + '.pt'))
-                embedding = embedding[0,:]
+                embedding_dict = torch.load(os.path.join(subdir, filename + '.pt'))
+                embedding = embedding_dict['square_padded_crop'].squeeze()
                 paths.append(path)
                 embeddings.append(embedding)
 
@@ -62,6 +62,7 @@ def find_near_duplicates(root_dir,
         output_dir = os.path.join(os.path.dirname(root_dir), f"near_duplicates_{sim_type}_{threshold}")
         os.makedirs(output_dir, exist_ok=True)
 
+        i = 0
         for i, img_paths in enumerate(near_duplicates):
             fix_duplicate(i, img_paths, output_dir, mode=fix_mode)
 

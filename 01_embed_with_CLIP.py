@@ -41,7 +41,7 @@ class CLIP_Model:
                 break
         
         self.clip_tensor_preprocess = transforms.Compose([
-            transforms.Resize(self.img_resolution),
+            transforms.Resize(self.img_resolution, antialias=True),
             transforms.CenterCrop(self.img_resolution),
             transforms.Normalize(
                 mean=self.target_mean,
@@ -62,7 +62,7 @@ class CLIP_Model:
         return image_features
     
 class CustomImageDataset(Dataset):
-    def __init__(self, image_paths, img_resolution, crop_names=["centre_crop", "square_padded_crop", "subcrops"]):
+    def __init__(self, image_paths, img_resolution, crop_names):
         self.image_paths = image_paths
         self.crop_names  = crop_names
         self.device      = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -108,7 +108,7 @@ class CustomImageDataset(Dataset):
             crops.append(square_padded_img)
             crop_names.append("square_padded_crop")
 
-        if 'subcrops' in self.crop_names:
+        if ('subcrop1' in self.crop_names) and ('subcrop2' in self.crop_names):
             # Create two small, square subcrops of different size (to be able to detect blurry images):
             # This specific cropping method is highly experimental and can probably be improved
             subcrop_area_fractions = [0.15, 0.1]
@@ -139,8 +139,8 @@ class CustomImageDataset(Dataset):
 
             crops.append(subcrop_1)
             crops.append(subcrop_2)
-            crop_names.append(f"subcrop_1_{subcrop_area_fractions[0]}")
-            crop_names.append(f"subcrop_2_{subcrop_area_fractions[1]}")
+            crop_names.append(f"subcrop1_{subcrop_area_fractions[0]}")
+            crop_names.append(f"subcrop2_{subcrop_area_fractions[1]}")
 
         if random.random() < sample_fraction_save_to_disk:
             timestamp = str(int(time.time()*100))
@@ -158,11 +158,17 @@ class CustomImageDataset(Dataset):
 
         
 class CLIP_Feature_Dataset():
-    def __init__(self, root_dir, clip_model_name, batch_size, clip_model_path = None, force_reencode = False, shuffle_filenames = True):
+    def __init__(self, root_dir, clip_model_name, batch_size, 
+                 clip_model_path = None, 
+                 force_reencode = False, 
+                 shuffle_filenames = True,
+                 crop_names = ["centre_crop", "square_padded_crop", "subcrop1", "subcrop2"]):
+        
         self.root_dir = root_dir
         self.force_reencode = force_reencode
         self.img_extensions = (".png", ".jpg", ".jpeg", ".JPEG", ".JPG", ".PNG")
         self.batch_size = batch_size
+        self.crop_names = crop_names
 
         print("Searching for images..")
         self.img_filepaths = [os.path.join(root, name) for root, dirs, files in os.walk(root_dir) for name in files if name.endswith(self.img_extensions)]
@@ -175,7 +181,7 @@ class CLIP_Feature_Dataset():
 
         # Get ready for processing:
         self.img_encoder = CLIP_Model(clip_model_name, clip_model_path)
-        self.img_dataset = CustomImageDataset(self.img_filepaths, self.img_encoder.img_resolution)
+        self.img_dataset = CustomImageDataset(self.img_filepaths, self.img_encoder.img_resolution, crop_names)
         self.dataloader = DataLoader(self.img_dataset, 
                                      batch_size=batch_size, shuffle=False, 
                                      num_workers=4)
@@ -189,29 +195,37 @@ class CLIP_Feature_Dataset():
 
         for batch in tqdm(self.dataloader):
             crops, crop_names_batch, img_paths = batch
+            batch_size = crops.shape[0]
+
             base_img_paths     = [os.path.splitext(img_path)[0] for img_path in img_paths]
             feature_save_paths = [base_img_path + ".pt" for base_img_path in base_img_paths]
-            crop_names_batch   = [crop_names for crop_names in crop_names_batch]
-            crops_stacked = crops.view(-1, *crops.shape[2:])
-            current_batch_size = crops_stacked.shape[0]
+            crop_names_batch   = [[crop[i] for crop in crop_names_batch] for i in range(batch_size)]
+            # collapse all non-img dimensions into a single dimension (to do a batch CLIP-embed):
+            crops_stacked = crops.view(-1, *crops.shape[-3:])
 
-            # If at least one of the feature vectors does not exist, or if we want to re-encode the batch:
             if self.force_reencode or not all([os.path.exists(feature_save_path) for feature_save_path in feature_save_paths]):
+                # batch-embed the crops into CLIP:
                 features = self.img_encoder.pt_imgs_to_features(crops_stacked)
-                # split the features back into the crops batch_size:
-                features = features.view(current_batch_size, -1, *features.shape[1:])
+                # Reshape the features back into [batch_size x n_crops x dim]:
+                features = features.view(batch_size, -1, features.shape[-1])
+
                 # save the features as a dictionary:
                 for feature, feature_save_path, crop_names in zip(features, feature_save_paths, crop_names_batch):
-                    torch.save(feature, feature_save_path)
-                n_embedded += current_batch_size
+                    feature_dict = {}
+                    for feature_crop, crop_name in zip(feature, crop_names):
+                        feature_dict[crop_name] = feature_crop.unsqueeze(0)
+                    torch.save(feature_dict, feature_save_path)
+
+                n_embedded += batch_size
             else:
-                n_skipped += current_batch_size
+                n_skipped += batch_size
 
             if (n_embedded + n_skipped) % 1000 == 0:
                 print(f"Skipped {n_skipped} images, embedded {n_embedded} images")
 
         print("--- Feature encoding done!")
-        print(f"Saved {len(self.img_filepaths)} feature vectors of shape {str(features.shape)} to {self.root_dir}")
+        print(f"Saved {len(self.img_filepaths)} feature vector dicts to {self.root_dir}")
+        print(f"Subcrop names that were saved: {crop_names}")
 
 
 
@@ -222,7 +236,12 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=12, help='Number of images to encode at once')
     parser.add_argument('--force_reencode', action='store_true', help='Force CLIP re-encoding of all images (default: False)')
     args = parser.parse_args()
+
+    crop_names = ['centre_crop', 'square_padded_crop', 'subcrop1', 'subcrop2']
     
     mp.set_start_method('spawn')
-    dataset = CLIP_Feature_Dataset(args.root_dir, args.clip_model_name, args.batch_size, clip_model_path = None, force_reencode = args.force_reencode)
+    dataset = CLIP_Feature_Dataset(args.root_dir, args.clip_model_name, args.batch_size, 
+                                   clip_model_path = None, 
+                                   force_reencode = args.force_reencode, 
+                                   crop_names = crop_names)
     dataset.process()

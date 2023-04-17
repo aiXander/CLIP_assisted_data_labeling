@@ -205,7 +205,6 @@ def label_dataset(root_directory, skip_labeled_files = True):
 
     while True:
         image_file = image_files[current_index]
-        print(image_file)
         uuid = os.path.basename(image_file).split(".")[0]
         label = load(uuid, database)
         if (label is not None) and (not np.isnan(label)) and skip_labeled_files:
@@ -262,4 +261,4 @@ if __name__ == "__main__":
     parser.add_argument('--skip_labeled_files', action='store_true', help='Skip files that are already labeled')
     args = parser.parse_args()
 
-    label_dataset(args.root_directory, args.skip_labeled_files)
+    label_dataset(args.root_dir, args.skip_labeled_files)

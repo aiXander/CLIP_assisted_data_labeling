@@ -53,7 +53,7 @@ def rename_files(root_dir, output_folder,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_dir', type=str, help='Input directory')
+    parser.add_argument('--root_dir', type=str, help='Root directory of the dataset folder')
     parser.add_argument('--output_dir', type=str, default = None, help='Output directory')
     parser.add_argument('--mode', type=str, default='copy', help='Modes: rename (in place) or copy')
     args = parser.parse_args()
@@ -63,14 +63,14 @@ if __name__ == "__main__":
         raise ValueError("Output directory must be specified when mode is 'copy'")
 
     if args.output_dir is None:
-        args.output_dir = args.input_dir
+        args.output_dir = args.root_dir
         args.mode = 'rename'
 
     if args.mode == 'rename':
         print("####### WARNING #######")
-        print(f"you are about to rename all the files inside {args.input_dir}, are you sure you want to do this?")
+        print(f"you are about to rename all the files inside {args.root_dir}, are you sure you want to do this?")
         answer = input("Type 'yes' to continue: ")
         if answer != 'yes':
             raise ValueError("Aborted")
 
-    rename_files(args.input_dir, args.output_dir, mode = args.mode,)
+    rename_files(args.root_dir, args.output_dir, mode = args.mode,)

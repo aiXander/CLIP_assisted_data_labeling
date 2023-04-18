@@ -1,4 +1,4 @@
-# CLIP_assisted_data_labeling
+# CLIP assisted data labeling
 Python toolkit to quickly label/filter lots of images using CLIP embeddings + active learning.
 Main use-case is to filter large imagedatasets that contain lots of bad images you don't want to train on.
 

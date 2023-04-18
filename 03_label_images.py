@@ -1,4 +1,5 @@
 import cv2
+import torch
 import os
 import glob
 import time
@@ -65,6 +66,12 @@ def create_sorting_window():
         variable=sorting_var,
         value="middle",
     )
+    radio5 = ttk.Radiobutton(
+        sorting_window,
+        text="diversity sorted",
+        variable=sorting_var,
+        value="diversity",
+    )
 
     sort_button = ttk.Button(sorting_window, text="Sort", command=on_sort_button_click)
 
@@ -72,7 +79,8 @@ def create_sorting_window():
     radio2.grid(row=1, column=0, padx=10, pady=10)
     radio3.grid(row=2, column=0, padx=10, pady=10)
     radio4.grid(row=3, column=0, padx=10, pady=10)
-    sort_button.grid(row=4, column=0, padx=10, pady=10)
+    radio5.grid(row=4, column=0, padx=10, pady=10)
+    sort_button.grid(row=5, column=0, padx=10, pady=10)
 
     sorting_window.mainloop()
     return selected_option
@@ -111,6 +119,49 @@ def relabel_image(uuid, label, database):
 
     return database
 
+@torch.no_grad()
+def cosine_similarity_matrix(a, b):
+    a_norm = a / a.norm(dim=1, keepdim=True)
+    b_norm = b / b.norm(dim=1, keepdim=True)
+    return torch.matmul(a_norm, b_norm.t())
+
+@torch.no_grad()
+def diversity_ordered_image_files(image_files, root_directory, total_n_ordered_imgs = 500, sample_size = 100):
+    img_files = [image_files[0]]
+    img_embedding = torch.load(os.path.join(root_directory, os.path.basename(img_files[0]).replace(".jpg", ".pt")))['square_padded_crop']
+    img_embedding = img_embedding.squeeze().unsqueeze(0)
+
+    for i in range(total_n_ordered_imgs):
+        # sample a random subset of the image files:
+        sample = random.sample(image_files, sample_size)
+
+        # get the corresponding .pt file for each:
+        sample_pt_files = [os.path.join(root_directory, os.path.basename(f).replace(".jpg", ".pt")) for f in sample]
+
+        # load the "square_padded_crop" CLIP embedding for each:
+        sample_embeddings = [torch.load(f)['square_padded_crop'] for f in sample_pt_files]
+        sample_embeddings = torch.stack(sample_embeddings, dim=0).squeeze()
+
+        # compute the similarities between all current image embeddings and the embeddings of the sample:
+        similarities = cosine_similarity_matrix(img_embedding, sample_embeddings)
+
+        # Find the maximum similarity value for each sample (the current embedding it is closest to)
+        max_val, _ = torch.max(similarities, dim=0)
+
+        # Find the index of the sample with the smallest maximum similarity
+        index_of_min = torch.argmin(max_val).item()
+
+        # add the image with the lowest similarity to the ordered list:
+        img_files.append(sample[index_of_min])
+        embedding_to_add = sample_embeddings[index_of_min].unsqueeze(0)
+
+        # aappend the embedding of the image with the lowest similarity to the current embedding:
+        img_embedding = torch.cat((img_embedding, embedding_to_add), dim=0)
+
+    # add the remaining images to the ordered list:
+    img_files = img_files + [f for f in image_files if f not in img_files]
+
+    return img_files
 
 
 def re_order_images(image_files, database, root_directory):
@@ -121,6 +172,9 @@ def re_order_images(image_files, database, root_directory):
 
     if sorting_option == "uuid":
         return image_files
+    
+    elif sorting_option == "diversity":
+        return diversity_ordered_image_files(image_files, root_directory, total_n_ordered_imgs = 100, sample_size = 10)
 
     else:
         # Modify the image_files sorting according to the selected option
@@ -197,6 +251,7 @@ def label_dataset(root_directory, skip_labeled_files = True):
     # count how many rows have the label column filled in:
     labeled_count = len(database.loc[database["label"].notnull()])
     print(f"Found {labeled_count} labeled images ({len(image_files)} total) in {label_file}")
+    create_backup(label_file)
 
     database = fix_database(database)
     image_files = re_order_images(image_files, database, root_directory)
@@ -235,8 +290,7 @@ def label_dataset(root_directory, skip_labeled_files = True):
             current_index += 1
             extra_labels += 1
 
-            if extra_labels % 1 == 0:
-                # Save the database:
+            if extra_labels % 5 == 0:
                 database.to_csv(label_file, index=False)
                 print_label_info(database)
 
@@ -249,10 +303,9 @@ def label_dataset(root_directory, skip_labeled_files = True):
 
         current_index = current_index % len(image_files)
 
-        if random.random() < 0.1:
-            create_backup(label_file)
-
     cv2.destroyAllWindows()
+    database.to_csv(label_file, index=False)
+    print_label_info(database)
 
 
 if __name__ == "__main__":

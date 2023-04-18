@@ -171,7 +171,7 @@ if __name__ == "__main__":
 
     # Training args:
     parser.add_argument('--test_fraction', type=float, default=0.0,  help='Fraction of the training data to use for testing')
-    parser.add_argument('--n_epochs',      type=int,   default=100,    help='Number of epochs to train for')
+    parser.add_argument('--n_epochs',      type=int,   default=40,    help='Number of epochs to train for')
     parser.add_argument('--batch_size',    type=int,   default=128,   help='Batch size for training')
     parser.add_argument('--lr',            type=float, default=0.001, help='Learning rate')
     parser.add_argument('--weight_decay',  type=float, default=0.001, help='Weight decay for the Adam optimizer (default: 0.001)')

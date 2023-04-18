@@ -49,6 +49,40 @@ def predict(features, paths, uuids, database, row, model, output_dir, args):
 
         return database
 
+
+from matplotlib import pyplot as plt
+def plot_label_distribution(database, args, max_x = 0.6):
+    # Save a plot of the label distribution
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Create the histogram
+    n, bins, patches = ax.hist(database['predicted_label'].values, bins=100, alpha=0.75, color='blue', edgecolor='black')
+
+    # Customize the plot appearance
+    ax.set_title(f'Label Distribution for {os.path.basename(args.root_dir)}', fontsize=18)
+    ax.set_xlabel('Predicted Label', fontsize=14)
+    ax.set_ylabel('Frequency', fontsize=14)
+    ax.grid(axis='y', alpha=0.75, linestyle='--')
+
+    # Add a text box with mean and standard deviation
+    mu = np.mean(database['predicted_label'].values)
+    sigma = np.std(database['predicted_label'].values)
+    textstr = f'$\mu={mu:.2f}$\n$\sigma={sigma:.2f}$'
+    props = dict(boxstyle='round', facecolor='white', alpha=0.8)
+    ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=12,
+            verticalalignment='top', bbox=props)
+
+    # Set a custom y-axis tick format
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: f"{int(x):,}"))
+
+    # Set the x-axis range
+    ax.set_xlim(left=0, right=max_x)
+
+    # Save the plot in the parent dir of args.root_dir
+    output_dir = os.path.dirname(args.root_dir)
+    plt.savefig(os.path.join(output_dir, f"label_distribution_{os.path.basename(args.root_dir)}.png"))
+    plt.close()
+
 def predict_labels(args):
 
     model_file = find_model(args.model_file)
@@ -125,6 +159,8 @@ def predict_labels(args):
             database.to_csv(label_file, index=False)
 
     database.to_csv(label_file, index=False)
+    plot_label_distribution(database, args)
+
     print("Done!")
     print(f"{n_predictions} of {len(img_files)} img predicted ({already_labeled} already labeled, {n_skips} skipped due to no CLIP embbeding found on disk).")
     print(f"Database saved at {label_file}")

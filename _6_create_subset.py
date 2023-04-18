@@ -15,7 +15,7 @@ def copy_data(args, output_suffix = '_subset'):
     database = pd.read_csv(database_path)
     print(f"Loaded database with {len(database)} rows")
     database = database.loc[database["predicted_label"] >= args.min_score]
-    database = database.loc[database["predicted_label"] < args.max_score]
+    database = database.loc[database["predicted_label"] <= args.max_score]
     print(f"Found {len(database)} rows with {args.min_score} < predicted_label < {args.max_score}")
 
     output_suffix = f'_{args.min_score:.2f}_to_{args.max_score:.2f}' + output_suffix

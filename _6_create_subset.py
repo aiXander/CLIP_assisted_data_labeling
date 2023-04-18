@@ -4,21 +4,27 @@ from tqdm import tqdm
 import argparse
 import pandas as pd
 
-def copy_data(input_dir, min_score, extensions = ['.jpg'], output_suffix = '_subset'):
+def copy_data(input_dir, min_score, extensions = ['.jpg'], output_suffix = '_subset', test = False):
     '''
     Copy all the files in the root_dir based on predicted label
     '''
-
-    output_suffix = f'_>{min_score:.2f}' + output_suffix
-    output_folder = os.path.join(input_dir + output_suffix)
-    os.makedirs(output_folder, exist_ok=True)
     
     # Get all the rows where the predicted label is above the threshold:
     database_path = os.path.join(os.path.dirname(input_dir), os.path.basename(input_dir) + ".csv")
     database = pd.read_csv(database_path)
+    print(f"Loaded database with {len(database)} rows")
     database = database.loc[database["predicted_label"] >= min_score]
+    print(f"Found {len(database)} rows with predicted label >= {min_score}")
+
+    if test:
+        return
+
+    output_suffix = f'_{min_score:.2f}' + output_suffix
+    output_folder = os.path.join(input_dir + output_suffix)
+    os.makedirs(output_folder, exist_ok=True)
     
     # Loop over the uuids in the database and copy the corresponding files to the output folder:
+    print(f"Copying files to {output_folder}...")
     counter = [0] * len(extensions)
     for uuid in tqdm(database["uuid"].values):
         for ext in extensions:
@@ -42,6 +48,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_dir', type=str, help='Input directory')
     parser.add_argument('--min_score', type=float, help='Input directory')
+    parser.add_argument('--test', action='store_true', help='Test mode')
     args = parser.parse_args()
 
-    copy_data(args.input_dir, args.min_score, extensions = ['.jpg', '.txt'])
+    copy_data(args.input_dir, args.min_score, extensions = ['.jpg', '.txt', '.pt'], test = args.test)

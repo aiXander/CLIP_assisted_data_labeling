@@ -7,11 +7,12 @@ Main use-case is to filter large imagedatasets that contain lots of bad images y
 1. Embed all the images in the database using CLIP
 2. Remove potential duplicate images based on a cosine-similarity threshold
 3. Manually label a few images (10 minutes of labeling is usually sufficient to start)
-Labeling supports ordering the images in one of three ways:
+Labeling supports ordering the images in several different ways:
     - by uuid (= random)
     - best predicted first
     - worst predicted first
     - median predicted first (start labeling where there's most uncertainty)
+    - diversity sort (tries to start with an as diverse as possible subset of the data)
 4. Train a NN regressor/classifier on the current database (CLIP-embedding --> label)
 5. Predict the labels for all the unlabeled images	
 

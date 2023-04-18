@@ -1,5 +1,6 @@
 import cv2
 import torch
+from tqdm import tqdm
 import os
 import glob
 import time
@@ -127,11 +128,18 @@ def cosine_similarity_matrix(a, b):
 
 @torch.no_grad()
 def diversity_ordered_image_files(image_files, root_directory, total_n_ordered_imgs = 500, sample_size = 100):
+    """
+    Tries to order the first total_n_ordered_imgs in a way that maximizes the diversity of that set in CLIP space.
+    This is idea for starting a fresh labeling session, where you want to label the most diverse images first.
+    
+    """
     img_files = [image_files[0]]
     img_embedding = torch.load(os.path.join(root_directory, os.path.basename(img_files[0]).replace(".jpg", ".pt")))['square_padded_crop']
     img_embedding = img_embedding.squeeze().unsqueeze(0)
 
-    for i in range(total_n_ordered_imgs):
+    print("Creating the most CLIP-diverse ordering of the first ", total_n_ordered_imgs, " images...")
+
+    for i in tqdm(range(min(total_n_ordered_imgs, len(image_files)-1))):
         # sample a random subset of the image files:
         sample = random.sample(image_files, sample_size)
 
@@ -174,7 +182,7 @@ def re_order_images(image_files, database, root_directory):
         return image_files
     
     elif sorting_option == "diversity":
-        return diversity_ordered_image_files(image_files, root_directory, total_n_ordered_imgs = 100, sample_size = 10)
+        return diversity_ordered_image_files(image_files, root_directory)
 
     else:
         # Modify the image_files sorting according to the selected option

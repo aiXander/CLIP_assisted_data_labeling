@@ -39,11 +39,11 @@ Metadata files (such as .txt prompt files or .npy files) that have the same base
 In all following scripts, the root_dir is the main directory where your training images live.
 Most scripts should also work if this root_dir has subfolders with eg different subsets of the data.
 
-### _00_rename_files.py
+### _0_rename_files.py
 The labels are kept in a .csv file with a unique identifier linking to each image.
 To be sure to avoid name clashes, it is highly recommended to rename each img (and any metadata files with the same name) with a unique uuid
 
-### _01_embed_with_CLIP.py
+### _1_embed_with_CLIP.py
 Specify a specific CLIP model name and a batch size and embed all images using CLIP (embeddings are stored on disk as .pt files)
 For each image, 4 crops are taken:
 	- square crop at the centre of the image
@@ -51,22 +51,22 @@ For each image, 4 crops are taken:
 	- subcrop1 (to detect blurry images and zoomed-in details)
 	- subcrop2 (to detect blurry images and zoomed-in details)
 	
-### _02_remove_duplicates.py
+### _2_remove_duplicates.py
 Specify a cosine-similarity threshold and remove duplicate images from the dataset
 
-### _03_label_images.py
+### _3_label_images.py
 This script only works on a single image folder with no subfolders!
 Simple labeling interface using opencv that support re-ordering the images based on predicted labels
 Label an image using they numkeys [0-9] on the keyboard
 Go forward and backwards using the arrow keys <-- / -->
 
-### _04_train_model.py
+### _4_train_model.py
 Train a simple FC-neural network based on the flattened CLIP-crop embeddings to regress / classify the image labels
 Flow:
 	- first optimize hyperparameters using eg --test_fraction 0.15
 	- finally do a final training run using all the data
 
-### _05_predict_labels.py
+### _5_predict_labels.py
 Predict the labels for the entire image dataset using the trained model
 copy_named_imgs_fraction can be used to see a sneak peak of labeled results
 

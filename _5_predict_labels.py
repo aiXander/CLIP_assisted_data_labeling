@@ -31,8 +31,8 @@ def predict(features, paths, uuids, database, row, model, output_dir, args):
             else:
                 index_to_update = row.index[0]
                 # Update the values in the row
-                database.loc[index_to_update, 'predicted_label'] = predicted_score
-                database.loc[index_to_update, 'timestamp'] = current_timestamp
+                database.at[index_to_update, 'predicted_label'] = predicted_score
+                database.at[index_to_update, 'timestamp'] = current_timestamp
 
             if random.random() < args.copy_imgs_fraction:
                 # Copy the image to the output directory:

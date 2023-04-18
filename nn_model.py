@@ -8,9 +8,12 @@ class SimpleFC(nn.Module):
                  crop_names = ['centre_crop', 'square_padded_crop', 'subcrop1', 'subcrop2'],
                  dropout_prob=0.0, 
                  verbose = 0):
+        
         super(SimpleFC, self).__init__()
         self.crop_names = crop_names
         layer_sizes = [input_size] + hidden_sizes + [output_size]
+
+        # Define the network:
         layers = []
         for i in range(len(layer_sizes) - 1):
             layers.append(nn.Linear(layer_sizes[i], layer_sizes[i+1]))
@@ -21,8 +24,7 @@ class SimpleFC(nn.Module):
 
         self.layers = nn.ModuleList(layers)
 
-        if verbose > 0:
-            # Print the final network layout:
+        if verbose > 0: # Print the final network layout:
             print(self)
 
     def forward(self, x):

@@ -139,7 +139,7 @@ def predict_labels(args):
             print(f"WARNING: {n_features} crop features found for {uuid} (expected {len(model.crop_names)}), skipping this sample...")
             continue
 
-        features.append(img_features.flatten().to(device).float())
+        features.append(img_features.flatten())
         paths.append(img_path)
         uuids.append(uuid)
 

@@ -94,7 +94,7 @@ def predict_labels(args):
         database = pd.read_csv(label_file)
         print(f"Loaded existing database: {label_file}.\nDatabase contains {len(database)} entries")
     else:
-        database = pd.DataFrame(columns=["uuid", "label", "timestamp"])
+        database = pd.DataFrame(columns=["uuid", "label", "timestamp", "predicted_label"])
         print(f"Created new database file at {label_file}")
 
     # add new column 'predicted_label' to the database if not yet present:
@@ -160,6 +160,13 @@ def predict_labels(args):
 
 
 if __name__ == "__main__":
+
+    """
+
+    TODO add a dataloader class that loads the images from disk on the fly / multi-threaded
+    
+    """
+    
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_dir',   type=str, help='Root directory of the dataset')
     parser.add_argument('--model_file', type=str, help='Path to the model file (.pkl)')

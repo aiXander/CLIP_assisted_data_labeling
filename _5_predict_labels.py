@@ -170,7 +170,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_dir',   type=str, help='Root directory of the dataset')
     parser.add_argument('--model_file', type=str, help='Path to the model file (.pkl)')
-    parser.add_argument('--batch_size', type=int, default=16, help='Batch size for predicting')
+    parser.add_argument('--batch_size', type=int, default=32, help='Batch size for predicting')
     parser.add_argument('--copy_imgs_fraction', type=float, default=0.01, help='Fraction of images to copy to tmp_output directory with prepended prediction score')
     args = parser.parse_args()
 

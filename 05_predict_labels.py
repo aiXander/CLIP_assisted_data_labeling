@@ -29,14 +29,7 @@ def predict(features, paths, uuids, database, row, model, output_dir, args):
                 new_row = {"uuid": uuid, "timestamp": current_timestamp, "predicted_label": predicted_score}
                 database = pd.concat([database, pd.DataFrame([new_row])], ignore_index=True)
             else:
-                # Update the existing entry:
-                index_to_update = database.loc[database['uuid'] == uuid]
-                
-                if len(index_to_update) == 0:
-                    print(f"ERROR: could not find uuid {uuid} in database!")
-                    continue
-                else:
-                    index_to_update = index_to_update.index[0]
+                index_to_update = row.index[0]
                 # Update the values in the row
                 database.loc[index_to_update, 'predicted_label'] = predicted_score
                 database.loc[index_to_update, 'timestamp'] = current_timestamp

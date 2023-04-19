@@ -4,9 +4,7 @@ import torch
 import argparse
 from tqdm import tqdm
 
-def get_paths_and_embeddings(root_dir, 
-        crop_to_use = 'square_padded_crop',
-        n_imgs_per_batch = 17000):
+def get_paths_and_embeddings(root_dir, chunk_size, crop_to_use):
     for subdir, dirs, files in os.walk(root_dir):
         print(f"\nParsing {subdir}, subdirs: {dirs}, n_files: {len(files)}..")
         paths, embeddings = [], []       
@@ -30,7 +28,7 @@ def get_paths_and_embeddings(root_dir,
                     paths.append(path)
                     embeddings.append(embedding)
 
-                    if len(paths) == n_imgs_per_batch:
+                    if len(paths) == chunk_size:
                         yield paths, embeddings
                         paths, embeddings = [], []
                 except:
@@ -40,15 +38,14 @@ def get_paths_and_embeddings(root_dir,
             yield paths, embeddings
 
 
-def find_near_duplicates(root_dir, 
-                         threshold=0.975, 
-                         sim_type='cosine', # ['cosine', 'euclidean']
-                         mode='copy',   # ['rename', 'copy']
+def find_near_duplicates(args,
+                         sim_type = 'cosine', # ['cosine', 'euclidean']
                          crop_to_use = 'square_padded_crop',  # which crop CLIP embedding do we compute the similarity on?
                          ):
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    for paths, embeddings in get_paths_and_embeddings(root_dir, crop_to_use):
+    for paths, embeddings in get_paths_and_embeddings(args.root_dir, args.chunk_size, crop_to_use):
         if len(paths) == 0 or len(embeddings) == 0:
             continue
 
@@ -63,7 +60,7 @@ def find_near_duplicates(root_dir,
             similarity_matrix = torch.cdist(normalized_embeddings, normalized_embeddings)
 
         # Find the near duplicates using torch.where:
-        near_duplicate_indices = torch.where(torch.triu(similarity_matrix, diagonal=1) > threshold)
+        near_duplicate_indices = torch.where(torch.triu(similarity_matrix, diagonal=1) > args.threshold)
         # convert indices to lists of integers:
         near_duplicate_indices = list(zip(near_duplicate_indices[0].tolist(), near_duplicate_indices[1].tolist()))
         near_duplicates = [(paths[i], paths[j]) for i, j in near_duplicate_indices]
@@ -72,26 +69,26 @@ def find_near_duplicates(root_dir,
         near_duplicate_values = [similarity_matrix[i, j].item() for i, j in near_duplicate_indices]
 
         # Create a folder for the near duplicates next to the root_dir:
-        output_dir = os.path.join(os.path.dirname(root_dir), f"near_duplicates_{sim_type}_{threshold}")
+        output_dir = os.path.join(os.path.dirname(args.root_dir), f"near_duplicates_{sim_type}_{args.threshold}")
         os.makedirs(output_dir, exist_ok=True)
 
         i = 0
         print(f"Found {len(near_duplicates)} duplicates!")
 
         if len(near_duplicates) > 0 and not args.test:
-            verb = "copying" if mode == 'copy' else "moving"
+            verb = "copying" if args.mode == 'copy' else "moving"
             print(f"{verb} {len(near_duplicates)} near duplicates to {output_dir}...")
 
             for i, (img_paths, sim_value) in enumerate(zip(near_duplicates, near_duplicate_values)):
-                fix_duplicate(i, img_paths, output_dir, sim_value, mode=mode)
+                fix_duplicate(i, img_paths, output_dir, sim_value, args.mode)
 
-            if mode == 'move':
+            if args.mode == 'move':
                 print(f"Moved {i} duplicates to {output_dir}")
-            elif mode == 'copy':
+            elif args.mode == 'copy':
                 print(f"Copied {i} duplicates (not removed from data yet!) to {output_dir}")
 
 
-def fix_duplicate(duplicate_index, img_paths, outdir, sim_value, mode = 'copy'):
+def fix_duplicate(duplicate_index, img_paths, outdir, sim_value, mode):
     # TODO: Remove the duplicate with the lowest aesthetic score
 
     dirname = os.path.dirname(img_paths[0])
@@ -122,7 +119,8 @@ if __name__ == '__main__':
     parser.add_argument('--root_dir', type=str, help='Root directory of the dataset')
     parser.add_argument('--threshold', type=float, default=0.98, help='Cosine-similarity threshold for near-duplicate detection')
     parser.add_argument('--mode', type=str, default='copy', help='copy / move, Use copy to test the script, move after')
+    parser.add_argument('--chunk_size', type=int, default=10000, help='Chunk the duplicate detection into batches of this size to avoid OOM')
     parser.add_argument('--test', action='store_true', help='Test the script without doing anything')
     args = parser.parse_args()
 
-    find_near_duplicates(root_dir=args.root_dir, threshold=args.threshold, mode=args.mode)
+    find_near_duplicates(args)

@@ -14,9 +14,15 @@ def copy_data(args, output_suffix = '_subset'):
     database_path = os.path.join(os.path.dirname(args.input_dir), os.path.basename(args.input_dir) + ".csv")
     database = pd.read_csv(database_path)
     print(f"Loaded database with {len(database)} rows")
-    database = database.loc[database["predicted_label"] >= args.min_score]
-    database = database.loc[database["predicted_label"] <= args.max_score]
-    print(f"Found {len(database)} rows with {args.min_score} < predicted_label < {args.max_score}")
+
+    # Define a function to apply the filtering criteria
+    def filter_rows(row):
+        final_label = row["label"] if pd.notnull(row["label"]) else row["predicted_label"]
+        return args.min_score <= final_label <= args.max_score
+
+    # Filter the DataFrame using the function
+    database = database[database.apply(filter_rows, axis=1)]
+    print(f"Found {len(database)} rows with {args.min_score} < final_label < {args.max_score}")
 
     output_suffix = f'_{args.min_score:.2f}_to_{args.max_score:.2f}' + output_suffix
     output_folder = os.path.join(args.input_dir + output_suffix)

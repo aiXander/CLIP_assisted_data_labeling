@@ -6,9 +6,9 @@ from tqdm import tqdm
 
 def get_paths_and_embeddings(root_dir, 
         crop_to_use = 'square_padded_crop',
-        n_imgs_per_batch = 14000):
+        n_imgs_per_batch = 10000):
     for subdir, dirs, files in os.walk(root_dir):
-        print(f"Parsing {subdir}, subdirs: {dirs}, n_files: {len(files)}..")
+        print(f"\nParsing {subdir}, subdirs: {dirs}, n_files: {len(files)}..")
         paths, embeddings = [], []       
 
         # Get all the unique filenames (without the extension) and store a list of present extensions for each one:
@@ -77,13 +77,15 @@ def find_near_duplicates(root_dir,
 
         i = 0
         print(f"Found {len(near_duplicates)} near duplicates, copying them to {output_dir}..")
-        for i, (img_paths, sim_value) in enumerate(zip(near_duplicates, near_duplicate_values)):
-            fix_duplicate(i, img_paths, output_dir, sim_value, mode=mode)
+        
+        if len(near_duplicates) > 0:
+            for i, (img_paths, sim_value) in enumerate(zip(near_duplicates, near_duplicate_values)):
+                fix_duplicate(i, img_paths, output_dir, sim_value, mode=mode)
 
-        if mode == 'move':
-            print(f"Moved {i} duplicates (out of {len(paths)} total imgs) to {output_dir}")
-        elif mode == 'copy':
-            print(f"Found {i} duplicates (not removed from data yet!) out of {len(paths)} total imgs, results shown in {output_dir}")
+            if mode == 'move':
+                print(f"Moved {i} duplicates (out of {len(paths)} total imgs) to {output_dir}")
+            elif mode == 'copy':
+                print(f"Found {i} duplicates (not removed from data yet!) out of {len(paths)} total imgs, results shown in {output_dir}")
 
 
 def fix_duplicate(duplicate_index, img_paths, outdir, sim_value, mode = 'copy'):
@@ -113,7 +115,7 @@ def fix_duplicate(duplicate_index, img_paths, outdir, sim_value, mode = 'copy'):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_dir', type=str, help='Root directory of the dataset')
-    parser.add_argument('--threshold', type=float, default=0.975, help='Cosine-similarity threshold for near-duplicate detection')
+    parser.add_argument('--threshold', type=float, default=0.98, help='Cosine-similarity threshold for near-duplicate detection')
     parser.add_argument('--mode', type=str, default='copy', help='copy / move, Use copy to test the script, move after')
     args = parser.parse_args()
 

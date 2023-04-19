@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import argparse
+import pickle
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset, random_split
@@ -28,7 +29,7 @@ def train(args, crop_names):
         # randomly shuffle the data:
         data = data.sample(frac=1).reset_index(drop=True)
 
-        # Load the feature vectors from disk (uuid.npy)
+        # Load the feature vectors from disk (uuid.pt)
         for index, row in data.iterrows():
             try:
                 uuid = row["uuid"]
@@ -42,7 +43,7 @@ def train(args, crop_names):
                 features.append(img_features)
                 labels.append(label)
                 n_samples += 1
-            except Exception as e:
+            except: # simply skip the sample if something goes wrong
                 continue
 
         print(f"Loaded {n_samples} samples from {train_data_name}.")
@@ -101,6 +102,7 @@ def train(args, crop_names):
                 test_loss += loss.item()
 
         test_loss /= len(test_loader)
+        model.train()
         return test_loss
     
     def plot_losses(losses, y_axis_percentile_cutoff = 99.75, include_y_zero = 1):
@@ -144,17 +146,17 @@ def train(args, crop_names):
             plot_losses(losses)
 
     # Report:
-    print(f"---> Best test mse loss: {min(losses[1]):.4f} in epoch {np.argmin(losses[1])+1}")
+    if test_loss > 0:
+        print(f"---> Best test mse loss: {min(losses[1]):.4f} in epoch {np.argmin(losses[1])+1}")
     plot_losses(losses)
 
     if not args.dont_save: # Save the model
+        model.eval()
         n_train = len(train_dataset) / 1000
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H:%M:%S")
         model_save_name = f"{args.model_name}_{timestamp}_{n_train:.1f}k_imgs_{args.n_epochs}_epochs_{losses[1][-1]:.4f}_mse"
         os.makedirs("models", exist_ok=True)
-
-        #torch.save(model.state_dict(), f"models/{model_save_name}.pt")
-        import pickle
+        
         with open(f"models/{model_save_name}.pkl", "wb") as file:
             pickle.dump(model, file)
 
@@ -170,8 +172,8 @@ if __name__ == "__main__":
     parser.add_argument('--dont_save', action='store_true', help='Force CLIP re-encoding of all images (default: False)')
 
     # Training args:
-    parser.add_argument('--test_fraction', type=float, default=0.0,  help='Fraction of the training data to use for testing')
-    parser.add_argument('--n_epochs',      type=int,   default=40,    help='Number of epochs to train for')
+    parser.add_argument('--test_fraction', type=float, default=0.10,  help='Fraction of the training data to use for testing')
+    parser.add_argument('--n_epochs',      type=int,   default=70,    help='Number of epochs to train for')
     parser.add_argument('--batch_size',    type=int,   default=128,   help='Batch size for training')
     parser.add_argument('--lr',            type=float, default=0.001, help='Learning rate')
     parser.add_argument('--weight_decay',  type=float, default=0.001, help='Weight decay for the Adam optimizer (default: 0.001)')

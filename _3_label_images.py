@@ -253,13 +253,13 @@ def label_dataset(root_directory, skip_labeled_files = True):
 
     if os.path.exists(label_file):
         database = pd.read_csv(label_file)
+        create_backup(label_file)
     else:
         database = pd.DataFrame(columns=["uuid", "label", "timestamp", "predicted_label"])
 
     # count how many rows have the label column filled in:
     labeled_count = len(database.loc[database["label"].notnull()])
     print(f"Found {labeled_count} labeled images ({len(image_files)} total) in {label_file}")
-    create_backup(label_file)
 
     database = fix_database(database)
     image_files = re_order_images(image_files, database, root_directory)
@@ -268,7 +268,7 @@ def label_dataset(root_directory, skip_labeled_files = True):
 
     while True:
         image_file = image_files[current_index]
-        uuid = os.path.basename(image_file).split(".")[0]
+        uuid = os.path.splitext(os.path.basename(image_file))[0]
         label = load(uuid, database)
         if (label is not None) and (not np.isnan(label)) and skip_labeled_files:
             current_index += 1

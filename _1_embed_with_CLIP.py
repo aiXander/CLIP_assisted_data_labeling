@@ -182,9 +182,9 @@ class CLIP_Feature_Dataset():
         # Get ready for processing:
         self.img_encoder = CLIP_Model(clip_model_name, clip_model_path)
         self.img_dataset = CustomImageDataset(self.img_filepaths, self.img_encoder.img_resolution, crop_names)
-        self.dataloader = DataLoader(self.img_dataset, 
-                                     batch_size=batch_size, shuffle=False, 
-                                     num_workers=4)
+        self.dataloader  = DataLoader(self.img_dataset, 
+                                        batch_size=batch_size, shuffle=False, 
+                                        num_workers=args.num_workers, prefetch_factor=2)
 
     def __len__(self):
         return len(self.img_filepaths)
@@ -235,6 +235,7 @@ if __name__ == "__main__":
     parser.add_argument('--clip_model_name', type=str, default = "ViT-L-14-336/openai", help='Name of the open_clip model, see https://github.com/mlfoundations/open_clip/tree/main/src/open_clip/model_configs')
     parser.add_argument('--batch_size', type=int, default=12, help='Number of images to encode at once')
     parser.add_argument('--force_reencode', action='store_true', help='Force CLIP re-encoding of all images (default: False)')
+    parser.add_argument('--num_workers', type=int, default=4, help='Number of workers to use for the dataloader')
     args = parser.parse_args()
 
     crop_names = ['centre_crop', 'square_padded_crop', 'subcrop1', 'subcrop2']

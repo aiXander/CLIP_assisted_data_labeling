@@ -112,7 +112,7 @@ def predict_labels(args):
     # Get all *.jpg files in the input_directory:
     img_files = [os.path.splitext(f)[0] for f in os.listdir(args.root_dir) if f.endswith('.jpg')]
     dataset = CustomDataset(img_files, model, args)
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=4)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, prefetch_factor=2)
     print(f"Predicting labels for {len(dataset)} images...")
 
     n_predictions = 0
@@ -166,6 +166,7 @@ if __name__ == "__main__":
     parser.add_argument('--model_file', type=str, help='Path to the model file (.pkl)')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size for predicting')
     parser.add_argument('--copy_imgs_fraction', type=float, default=0.01, help='Fraction of images to copy to tmp_output directory with prepended prediction score')
+    parser.add_argument('--num_workers', type=int, default=4, help='Number of workers to use for the dataloader')
     args = parser.parse_args()
 
     mp.set_start_method('spawn')

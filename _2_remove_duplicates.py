@@ -2,12 +2,15 @@ import os
 import shutil
 import torch
 import argparse
+import random
 from tqdm import tqdm
 
-def get_paths_and_embeddings(root_dir, chunk_size, crop_to_use):
+def get_paths_and_embeddings(root_dir, chunk_size, crop_to_use, shuffle = False):
     for subdir, dirs, files in os.walk(root_dir):
         print(f"\nParsing {subdir}, subdirs: {dirs}, n_files: {len(files)}..")
-        paths, embeddings = [], []       
+        paths, embeddings = [], []
+        if shuffle:
+            random.shuffle(files)  # shuffle the list of files
 
         # Get all the unique filenames (without the extension) and store a list of present extensions for each one:
         unique_filenames = {}

@@ -142,12 +142,14 @@ def predict_labels(args):
         database.drop(columns=['predicted_label_new', 'timestamp_new'], inplace=True)
         n_predictions += len(uuids)
 
-        if random.random() < args.copy_imgs_fraction:
-            for i, uuid in enumerate(uuids):
-                src = img_paths[i]
-                dst = os.path.join(output_dir, f"{predicted_labels[i]:.3f}_{uuid}.jpg")
-                #dst = os.path.join(output_dir, f"{uuid}_{predicted_labels[i]:.3f}.jpg")
-                shutil.copy(src, dst)
+        if args.copy_imgs_fraction > 0: # copy a random fraction of the images to the output directory
+            indices = np.arange(len(uuids))
+            random_indices = indices[np.random.random(len(uuids)) < args.copy_imgs_fraction]
+            src_paths = [img_paths[i] for i in random_indices]
+            dst_paths = [f"{predicted_labels[i]:.3f}_{uuids[i]}.jpg" for i in random_indices]
+
+            for src, dst in zip(src_paths, dst_paths):
+                shutil.copy(src, os.path.join(output_dir, dst))
 
         if n_predictions % 100 == 0:
             database.to_csv(label_file, index=False)

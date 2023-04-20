@@ -71,5 +71,5 @@ Predict the labels for the entire image dataset using the trained model
 copy_named_imgs_fraction can be used to see a sneak peak of labeled results
 
 ### _6_create_subset.py
-Use the predicted labels to copy a subset of the dataset to an output folder
+Finally, use the predicted labels to copy a subset of the dataset to an output folder.
 (Currently does not yet work on folders with subdirs)

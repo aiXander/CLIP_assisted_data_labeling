@@ -42,8 +42,8 @@ def copy_data(args, output_suffix = '_subset'):
             width, height = img.size
             aspect_ratio = width / height
 
-        # check if the aspect ratio is within the specified range:
-        if aspect_ratio < args.min_aspect_ratio or aspect_ratio > args.max_aspect_ratio:
+        # check if the img is within the aspect ratio and pixel size range:
+        if aspect_ratio < args.min_aspect_ratio or aspect_ratio > args.max_aspect_ratio or (width*height) < args.min_n_pixels:
             continue
 
         for ext in args.extensions:
@@ -72,6 +72,7 @@ if __name__ == "__main__":
     parser.add_argument('--extensions', nargs='+', default=['.jpg', '.txt', '.pt'], help='Extensions to consider')
     parser.add_argument('--min_aspect_ratio', type=float, default=0.25, help='Minimum aspect ratio of imgs to consider')
     parser.add_argument('--max_aspect_ratio', type=float, default=4.00, help='Maximum aspect ratio of imgs to consider')
+    parser.add_argument('--min_n_pixels', type=int, default=(512*512), help='Minimum number of total pixels of imgs to consider')
     parser.add_argument('--test', action='store_true', help='Test mode, wont actually copy anything')
     args = parser.parse_args()
 

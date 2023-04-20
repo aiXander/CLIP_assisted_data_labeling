@@ -8,7 +8,7 @@ from tqdm import tqdm
 import argparse
 from matplotlib import pyplot as plt
 
-from nn_model import device, SimpleFC
+from utils.nn_model import device, SimpleFC
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.multiprocessing as mp

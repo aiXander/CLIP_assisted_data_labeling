@@ -11,6 +11,51 @@ import torch.multiprocessing as mp
 from torch.nn import functional as F
 import numpy as np
 
+from utils.image_features import ImageFeaturizer
+
+import torch
+import torchvision.transforms as transforms
+from torchvision import models
+from PIL import Image
+
+def extract_vgg_features(image, model_name='vgg', layer_index=10):
+    # Load pre-trained model
+    if model_name == 'vgg':
+        model = models.vgg16(pretrained=True).features
+    elif model_name == 'alexnet':
+        model = models.alexnet(pretrained=True).features
+    else:
+        raise ValueError('Invalid model name. Choose "vgg" or "alexnet".')
+
+    # Set model to evaluation mode
+    model.eval()
+
+    # Extract features up to the specified layer
+    model = torch.nn.Sequential(*list(model.children())[:layer_index+1])
+
+    # Define image transformation
+    transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+
+    image = transform(image).unsqueeze(0)
+
+    # Move image to GPU if available
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    image = image.to(device)
+    model = model.to(device)
+
+    # Extract features
+    with torch.no_grad():
+        features = model(image)
+
+    return features
+
+
+
 class CLIP_Model:
     def __init__(self, clip_model_name, clip_model_path = None):
 
@@ -67,6 +112,7 @@ class CustomImageDataset(Dataset):
         self.crop_names  = crop_names
         self.device      = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.img_resolution = img_resolution
+        self.img_featurizer = ImageFeaturizer()
 
     def __len__(self):
         return len(self.image_paths)
@@ -76,7 +122,8 @@ class CustomImageDataset(Dataset):
             img_path = self.image_paths[idx]
             pil_img = Image.open(img_path).convert('RGB')
             crops, crop_names = self.extract_crops(pil_img)
-            return crops, crop_names, img_path
+            image_features = self.img_featurizer.process(np.array(pil_img))
+            return crops, crop_names, img_path, image_features
         except:
             print(f"Error loading image {img_path}")
             return self.__getitem__(random.randint(0, len(self.image_paths)-1))
@@ -162,6 +209,7 @@ class CLIP_Feature_Dataset():
                  clip_model_path = None, 
                  force_reencode = False, 
                  shuffle_filenames = True,
+                 convert_all_to_jpg = True,
                  crop_names = ["centre_crop", "square_padded_crop", "subcrop1", "subcrop2"]):
         
         self.root_dir = root_dir
@@ -170,14 +218,31 @@ class CLIP_Feature_Dataset():
         self.batch_size = batch_size
         self.crop_names = crop_names
 
-        print("Searching for images..")
-        self.img_filepaths = [os.path.join(root, name) for root, dirs, files in os.walk(root_dir) for name in files if name.endswith(self.img_extensions)]
+        # Find all images in root_dir (and optionally convert them to .jpg):
+        print("Searching images..")
+        self.img_filepaths, n_converted = [], 0
+        for root, dirs, files in os.walk(root_dir):
+            for name in files:
+                if name.endswith(self.img_extensions):
+                    new_filename = os.path.join(root, name)
+                    if convert_all_to_jpg:
+                        if not name.endswith(".jpg"): # convert to jpg:
+                            orig_filename = os.path.join(root, name)
+                            new_filename  = os.path.join(root, os.path.splitext(name)[0] + ".jpg")
+                            img = Image.open(orig_filename).convert("RGB")
+                            img.save(new_filename, quality=95)
+                            os.remove(orig_filename)
+                            n_converted += 1
+                    self.img_filepaths.append(new_filename)
+                    if n_converted % 100 == 0:
+                        print(f"Converted {n_converted} images to .jpg")
         
         if shuffle_filenames:
             random.shuffle(self.img_filepaths)
         else: # sort filenames:
             self.img_filepaths.sort()
-        print(f"Found {len(self.img_filepaths)} images in {root_dir}")
+
+        print(f"---> Found {len(self.img_filepaths)} images in {root_dir}")
 
         # Get ready for processing:
         self.img_encoder = CLIP_Model(clip_model_name, clip_model_path)
@@ -194,12 +259,12 @@ class CLIP_Feature_Dataset():
         print(f"Embedding dataset of {len(self.img_filepaths)} images...")
 
         for batch in tqdm(self.dataloader):
-            crops, crop_names_batch, img_paths = batch
+            crops, crop_names_batch, img_paths, img_feature_dict_batch = batch
             batch_size = crops.shape[0]
-
             base_img_paths     = [os.path.splitext(img_path)[0] for img_path in img_paths]
             feature_save_paths = [base_img_path + ".pt" for base_img_path in base_img_paths]
             crop_names_batch   = [[crop[i] for crop in crop_names_batch] for i in range(batch_size)]
+
             # collapse all non-img dimensions into a single dimension (to do a batch CLIP-embed):
             crops_stacked = crops.view(-1, *crops.shape[-3:])
 
@@ -210,11 +275,19 @@ class CLIP_Feature_Dataset():
                 features = features.view(batch_size, -1, features.shape[-1])
 
                 # save the features as a dictionary:
+                batch_index = 0
                 for feature, feature_save_path, crop_names in zip(features, feature_save_paths, crop_names_batch):
                     feature_dict = {}
+                    for img_feature_name in img_feature_dict_batch.keys():
+                        feature_dict[img_feature_name] = img_feature_dict_batch[img_feature_name][batch_index]
+
                     for feature_crop, crop_name in zip(feature, crop_names):
                         feature_dict[crop_name] = feature_crop.unsqueeze(0)
+
+                    # Convert all the tensors in the dict to torch.float32:
+                    feature_dict = {k: v.float() for k, v in feature_dict.items()}
                     torch.save(feature_dict, feature_save_path)
+                    batch_index += 1
 
                 n_embedded += batch_size
             else:
@@ -231,7 +304,7 @@ class CLIP_Feature_Dataset():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--root_dir', type=str, help='Root directory of the dataset')
+    parser.add_argument('--root_dir', type=str, help='Root directory of the dataset (can contain subdirectories)')
     parser.add_argument('--clip_model_name', type=str, default = "ViT-L-14-336/openai", help='Name of the open_clip model, see https://github.com/mlfoundations/open_clip/tree/main/src/open_clip/model_configs')
     parser.add_argument('--batch_size', type=int, default=12, help='Number of images to encode at once')
     parser.add_argument('--force_reencode', action='store_true', help='Force CLIP re-encoding of all images (default: False)')

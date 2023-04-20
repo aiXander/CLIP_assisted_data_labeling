@@ -8,15 +8,16 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset, random_split
 from torch.optim import Adam
 import matplotlib.pyplot as plt
-from nn_model import device, SimpleFC
+from utils.nn_model import device, SimpleFC
 
-def train(args, crop_names):
+def train(args, crop_names, use_img_stat_features):
 
     torch.manual_seed(args.random_seed)
     np.random.seed(args.random_seed)
 
     features = []
     labels = []
+    skips = 0
 
     # Load all the labeled training data from disk:
     for train_data_name in args.train_data_names:
@@ -35,18 +36,28 @@ def train(args, crop_names):
                 uuid = row["uuid"]
                 label = row["label"]
                 feature_dict = torch.load(f"{args.train_data_dir}/{train_data_name}/{uuid}.pt")
-                img_features = torch.cat([feature_dict[crop_name] for crop_name in crop_names if crop_name in feature_dict], dim=0).flatten()
+                clip_features = torch.cat([feature_dict[crop_name] for crop_name in crop_names if crop_name in feature_dict], dim=0).flatten()
                 missing_crops = set(crop_names) - set(feature_dict.keys())
                 if missing_crops:
                     raise Exception(f"Missing crops {missing_crops} for {uuid}, either re-embed the image, or adjust the crop_names variable for training!")
 
-                features.append(img_features)
+                if use_img_stat_features:
+                    img_stat_feature_names = [key for key in feature_dict.keys() if key.startswith("img_stat_")]
+                    img_stat_features = torch.stack([feature_dict[img_stat_feature_name] for img_stat_feature_name in img_stat_feature_names], dim=0).to(device)
+                    all_features = torch.cat([clip_features, img_stat_features], dim=0)
+                else:
+                    all_features = clip_features
+
+                features.append(all_features)
                 labels.append(label)
                 n_samples += 1
             except: # simply skip the sample if something goes wrong
+                skips += 1
                 continue
 
-        print(f"Loaded {n_samples} samples from {train_data_name}.")
+        print(f"Loaded {n_samples} samples from {train_data_name}!")
+        if skips > 0:
+            print(f"(skipped {skips} samples due to loading errors)..")
 
     features = torch.stack(features, dim=0).to(device).float()
     labels = torch.tensor(labels).to(device).float()
@@ -172,7 +183,7 @@ if __name__ == "__main__":
     parser.add_argument('--dont_save', action='store_true', help='Force CLIP re-encoding of all images (default: False)')
 
     # Training args:
-    parser.add_argument('--test_fraction', type=float, default=0.10,  help='Fraction of the training data to use for testing')
+    parser.add_argument('--test_fraction', type=float, default=0.2,  help='Fraction of the training data to use for testing')
     parser.add_argument('--n_epochs',      type=int,   default=70,    help='Number of epochs to train for')
     parser.add_argument('--batch_size',    type=int,   default=128,   help='Batch size for training')
     parser.add_argument('--lr',            type=float, default=0.001, help='Learning rate')
@@ -184,5 +195,8 @@ if __name__ == "__main__":
     parser.add_argument('--random_seed', type=int, default=42, help='Random seed for reproducibility')
     args = parser.parse_args()
 
+    # Custom switches to turn on/off certain features:
     crop_names = ['centre_crop', 'square_padded_crop', 'subcrop1_0.15', 'subcrop2_0.1']
-    train(args, crop_names)
+    use_img_stat_features = True
+
+    train(args, crop_names, use_img_stat_features)

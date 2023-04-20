@@ -28,7 +28,7 @@ def copy_data(args, output_suffix = '_subset'):
     output_folder = os.path.join(args.input_dir + output_suffix)
 
     if args.test:
-        print(f"Running script in TEST MODE: Not actually copying any files to {output_folder}")
+        print(f"##### Running script in TEST MODE: Not actually copying any files #####")
     else:
         os.makedirs(output_folder, exist_ok=True)
 

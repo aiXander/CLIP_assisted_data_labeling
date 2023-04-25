@@ -77,8 +77,8 @@ class CustomImageDataset(Dataset):
             pil_img = Image.open(img_path).convert('RGB')
             crops, crop_names = self.extract_crops(pil_img)
             return crops, crop_names, img_path
-        except:
-            print(f"Error loading image {img_path}")
+        except Exception as e:
+            print(f"Error loading image {img_path}: {e}")
             return self.__getitem__(random.randint(0, len(self.image_paths)-1))
     
     def extract_crops(self, pil_img: Image,

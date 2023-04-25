@@ -183,7 +183,7 @@ if __name__ == "__main__":
     parser.add_argument('--dont_save', action='store_true', help='Force CLIP re-encoding of all images (default: False)')
 
     # Training args:
-    parser.add_argument('--test_fraction', type=float, default=0.2,  help='Fraction of the training data to use for testing')
+    parser.add_argument('--test_fraction', type=float, default=0.0,  help='Fraction of the training data to use for testing')
     parser.add_argument('--n_epochs',      type=int,   default=70,    help='Number of epochs to train for')
     parser.add_argument('--batch_size',    type=int,   default=128,   help='Batch size for training')
     parser.add_argument('--lr',            type=float, default=0.001, help='Learning rate')
@@ -197,6 +197,6 @@ if __name__ == "__main__":
 
     # Custom switches to turn on/off certain features:
     crop_names = ['centre_crop', 'square_padded_crop', 'subcrop1_0.15', 'subcrop2_0.1']
-    use_img_stat_features = True
+    use_img_stat_features = 0
 
     train(args, crop_names, use_img_stat_features)

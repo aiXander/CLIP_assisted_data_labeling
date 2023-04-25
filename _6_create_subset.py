@@ -43,7 +43,7 @@ def copy_data(args, output_suffix = '_subset'):
             aspect_ratio = width / height
 
         # check if the img is within the aspect ratio and pixel size range:
-        if aspect_ratio < args.min_aspect_ratio or aspect_ratio > args.max_aspect_ratio or (width*height) < args.min_n_pixels:
+        if aspect_ratio < args.min_aspect_ratio or aspect_ratio > args.max_aspect_ratio or (width*height) <= args.min_n_pixels:
             continue
 
         for ext in args.extensions:

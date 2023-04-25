@@ -162,6 +162,7 @@ class CLIP_Feature_Dataset():
                  clip_model_path = None, 
                  force_reencode = False, 
                  shuffle_filenames = True,
+                 num_workers = 2,
                  crop_names = ["centre_crop", "square_padded_crop", "subcrop1", "subcrop2"]):
         
         self.root_dir = root_dir
@@ -184,7 +185,7 @@ class CLIP_Feature_Dataset():
         self.img_dataset = CustomImageDataset(self.img_filepaths, self.img_encoder.img_resolution, crop_names)
         self.dataloader  = DataLoader(self.img_dataset, 
                                         batch_size=batch_size, shuffle=False, 
-                                        num_workers=args.num_workers, prefetch_factor=2)
+                                        num_workers=num_workers, prefetch_factor=2)
 
     def __len__(self):
         return len(self.img_filepaths)
@@ -244,5 +245,6 @@ if __name__ == "__main__":
     dataset = CLIP_Feature_Dataset(args.root_dir, args.clip_model_name, args.batch_size, 
                                    clip_model_path = None, 
                                    force_reencode = args.force_reencode, 
+                                   num_workers = args.num_workers,
                                    crop_names = crop_names)
     dataset.process()

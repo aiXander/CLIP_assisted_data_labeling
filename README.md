@@ -1,6 +1,6 @@
 # CLIP assisted data labeling
 Python toolkit to quickly label/filter lots of images using CLIP embeddings + active learning.
-Main use-case is to filter large imagedatasets that contain lots of bad images you don't want to train on.
+Main use-case is to filter large image datasets that contain lots of bad images you don't want to train on.
 
 ## Overview:
 0. Create unique uuid's for each img in the root_dir
@@ -52,7 +52,9 @@ For each image, 4 crops are taken:
 	- subcrop2 (to detect blurry images and zoomed-in details)
 	
 ### _2_remove_duplicates.py
-Specify a cosine-similarity threshold and remove duplicate images from the dataset
+Specify a cosine-similarity threshold and remove duplicate images from the dataset.
+This currently only works on max ~10k imgs at a time (due to the quadratic memory requirement of the all-to-all distance matrix)
+but the script randomly shuffles all imgs, so if you run this a few times that should get most of the duplicates!
 
 ### _3_label_images.py
 This script only works on a single image folder with no subfolders!

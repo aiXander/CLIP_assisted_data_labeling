@@ -235,7 +235,7 @@ class CLIP_Feature_Dataset():
                             os.remove(orig_filename)
                             n_converted += 1
                     self.img_filepaths.append(new_filename)
-                    if n_converted % 100 == 0:
+                    if n_converted % 100 == 0 and (n_converted > 0):
                         print(f"Converted {n_converted} images to .jpg")
         
         if shuffle_filenames:

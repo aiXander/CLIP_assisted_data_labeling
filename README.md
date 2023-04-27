@@ -5,7 +5,7 @@ Main use-case is to filter large image datasets that contain lots of bad images 
 ## Overview:
 0. Create unique uuid's for each img in the root_dir
 1. Embed all the images in the database using CLIP
-2. Remove potential duplicate images based on a cosine-similarity threshold
+2. Remove potential duplicate images based on a cosine-similarity threshold in CLIP-space
 3. Manually label a few images (10 minutes of labeling is usually sufficient to start)
 Labeling supports ordering the images in several different ways:
     - by uuid (= random)
@@ -51,26 +51,29 @@ For each image, 4 crops are taken:
 	- subcrop1 (to detect blurry images and zoomed-in details)
 	- subcrop2 (to detect blurry images and zoomed-in details)
 	
+Additionally, some manually engineered img features are also computed and saved to disk.
+	
 ### _2_remove_duplicates.py
 Specify a cosine-similarity threshold and remove duplicate images from the dataset.
 This currently only works on max ~10k imgs at a time (due to the quadratic memory requirement of the all-to-all distance matrix)
 but the script randomly shuffles all imgs, so if you run this a few times that should get most of the duplicates!
 
 ### _3_label_images.py
-This script only works on a single image folder with no subfolders!
-Simple labeling interface using opencv that support re-ordering the images based on predicted labels
+This script currently only works on a single image folder with no subfolders!
+Super basic labeling interface using opencv that support re-ordering the images based on predicted labels
 Label an image using they numkeys [0-9] on the keyboard
 Go forward and backwards using the arrow keys <-- / -->
+If a --filename--.txt file is found, the text in it will be displayed as prompt for the img.
 
 ### _4_train_model.py
-Train a simple FC-neural network based on the flattened CLIP-crop embeddings to regress / classify the image labels
+Train a simple 3-layer FC-neural network with ReLu's based on the flattened CLIP-crop embeddings to regress / classify the image labels
 Flow:
-	- first optimize hyperparameters using eg --test_fraction 0.15
+	- first optimize hyperparameters using eg `--test_fraction 0.15` and `--dont_save`
 	- finally do a final training run using all the data
 
 ### _5_predict_labels.py
 Predict the labels for the entire image dataset using the trained model
-copy_named_imgs_fraction can be used to see a sneak peak of labeled results
+`--copy_named_imgs_fraction` can be used to see a sneak peak of labeled results in a tmp output_directory
 
 ### _6_create_subset.py
 Finally, use the predicted labels to copy a subset of the dataset to an output folder.

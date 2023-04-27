@@ -1,13 +1,20 @@
 import numpy as np
 np.random.seed(42)
 
-# from Karpathy:
-# https://twitter.com/karpathy/status/1647025230546886658
+"""
+
+from Karpathy:
+https://twitter.com/karpathy/status/1647025230546886658
+
+Q: Can this approach for finding "similar" embeddings also be transformed 
+to make a better classifier / regressor in high dimensional spaces?
+
+"""
 
 dim = 768
 n = 1000
 
-embeddings = np.random.randn(n, dim) # 1000 documents, 1536-dimensional embeddings
+embeddings = np.random.randn(n, dim) # n documents, dim-dimensional embeddings
 embeddings = embeddings / np.sqrt((embeddings**2).sum(1, keepdims=True)) # L2 normalize the rows, as is common
 
 query = np.random.randn(dim) # the query vector

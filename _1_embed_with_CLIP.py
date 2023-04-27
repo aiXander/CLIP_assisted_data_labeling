@@ -209,7 +209,7 @@ class CLIP_Feature_Dataset():
                  clip_model_path = None, 
                  force_reencode = False, 
                  shuffle_filenames = True,
-                 convert_all_to_jpg = True,
+                 convert_all_to_jpg = False,
                  num_workers = 0,
                  crop_names = ["centre_crop", "square_padded_crop", "subcrop1", "subcrop2"]):
         
@@ -308,10 +308,12 @@ if __name__ == "__main__":
     parser.add_argument('--root_dir', type=str, help='Root directory of the dataset (can contain subdirectories)')
     parser.add_argument('--clip_model_name', type=str, default = "ViT-L-14-336/openai", help='Name of the open_clip model, see https://github.com/mlfoundations/open_clip/tree/main/src/open_clip/model_configs')
     parser.add_argument('--batch_size', type=int, default=12, help='Number of images to encode at once')
-    parser.add_argument('--force_reencode', action='store_true', help='Force CLIP re-encoding of all images (default: False)')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of workers to use for the dataloader')
+    parser.add_argument('--force_reencode', action='store_true', help='Force CLIP re-encoding of all images (default: False)')
+    parser.add_argument('--convert_to_jpg', action='store_true', help='Convert all imgs to .jpg (default: False)')
     args = parser.parse_args()
 
+    # Which img-crops to embed with CLIP and save to disk:
     crop_names = ['centre_crop', 'square_padded_crop', 'subcrop1', 'subcrop2']
     
     mp.set_start_method('spawn')
@@ -319,5 +321,6 @@ if __name__ == "__main__":
                                    clip_model_path = None, 
                                    force_reencode = args.force_reencode, 
                                    num_workers = args.num_workers,
+                                   convert_all_to_jpg = args.convert_to_jpg,
                                    crop_names = crop_names)
     dataset.process()

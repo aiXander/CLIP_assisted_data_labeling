@@ -299,7 +299,7 @@ class CLIP_Feature_Dataset():
 
         print("--- Feature encoding done!")
         print(f"Saved {len(self.img_filepaths)} feature vector dicts to {self.root_dir}")
-        print(f"Subcrop names that were saved: {crop_names}")
+        print(f"Subcrop names that were saved: {self.crop_names}")
 
 
 

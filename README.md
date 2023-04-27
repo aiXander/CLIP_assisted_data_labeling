@@ -78,3 +78,10 @@ Predict the labels for the entire image dataset using the trained model
 ### _6_create_subset.py
 Finally, use the predicted labels to copy a subset of the dataset to an output folder.
 (Currently does not yet work on folders with subdirs)
+
+## TODO
+	- CLIP features are great for semantic labeling/filtering, but tend to ignore low-level details like texture sharpness, pixel grain and bluriness.
+	The pipeline can probably be improved by adding additional features (lpips, vgg, ...)
+	- Currently the scoring model is just a heavily regularized 3-layer FC-neural network. It's likely that adding a more linear component (eg SVM) could make the predictions more robust
+	- The labeling tool currently only supports numerical labels and the pipeline is built for regression. This could be easily extended to class labels + classification.
+

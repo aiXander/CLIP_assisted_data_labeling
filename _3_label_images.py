@@ -214,6 +214,20 @@ def print_label_info(database, columns = ["uuid", "label", "predicted_label"]):
     n_labeled = sum(map(is_already_labeled, database['label']))
     print(f"{n_labeled} of {len(database)} images in the database labeled") 
 
+def draw_progress_bar(image, progress, total, height=10, color=(0, 255, 0), thickness=-1):
+    rows, cols, _ = image.shape
+
+    progress_bar_width = int(cols * 0.8)
+    progress_bar_start_x = int(cols * 0.1)
+    progress_bar_end_x = progress_bar_start_x + progress_bar_width
+    progress_bar_y = rows - height
+
+    cv2.rectangle(image, (progress_bar_start_x, progress_bar_y), (progress_bar_end_x, rows), (255, 255, 255), thickness)
+
+    progress_width = int((progress / total) * progress_bar_width)
+    cv2.rectangle(image, (progress_bar_start_x, progress_bar_y), (progress_bar_start_x + progress_width, rows), color, thickness)
+
+
 def fix_database(database):
     # Loop over all rows of the dataframe
     # When a row has the "label" column filled in, copy that value to the predicted_label column:
@@ -223,18 +237,23 @@ def fix_database(database):
 
     return database
 
-
+import json
 def load_image_and_prompt(uuid, root_directory):
     image_filepath = os.path.join(root_directory, uuid + ".jpg")
-    txt_filepath   = os.path.join(root_directory, uuid + ".txt")
-
     image = cv2.imread(image_filepath)
+    prompt = ''
 
+
+    txt_filepath = os.path.join(root_directory, uuid + ".txt")
     if os.path.exists(txt_filepath):
         for line in open(txt_filepath, "r"):
             prompt = line
-    else:
-        prompt = ''
+    
+    json_filepath = os.path.join(root_directory, uuid + ".json")
+    if os.path.exists(json_filepath):
+        with open(json_filepath, "r") as f:
+            json_data = json.load(f)
+            prompt = json_data['text_input']
 
     return image, prompt
 
@@ -288,6 +307,7 @@ def label_dataset(root_directory, skip_labeled_files = True):
             except:
                 cv2.putText(image, f"{prompt}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 100, 25), 2)
                 
+        draw_progress_bar(image, current_index, len(image_files))
         cv2.namedWindow("image", cv2.WINDOW_AUTOSIZE)  # Set the window property to autosize
         cv2.imshow("image", image)  # Display the image in the "image" window
         key = cv2.waitKey(0)

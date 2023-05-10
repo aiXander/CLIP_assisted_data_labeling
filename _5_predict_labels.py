@@ -46,6 +46,9 @@ def plot_label_distribution(database, args, max_x = 0.6):
     plt.close()
 
 def find_model(model_name, model_dir = "models"):
+    if os.path.isfile(model_name):
+        return model_name
+        
     model_files = os.listdir(model_dir)
     for model_file in model_files:
         if model_name in model_file:

@@ -209,7 +209,6 @@ class CLIP_Feature_Dataset():
                  clip_model_path = None, 
                  force_reencode = False, 
                  shuffle_filenames = True,
-                 convert_all_to_jpg = False,
                  num_workers = 0,
                  crop_names = ["centre_crop", "square_padded_crop", "subcrop1", "subcrop2"]):
         
@@ -219,24 +218,14 @@ class CLIP_Feature_Dataset():
         self.batch_size = batch_size
         self.crop_names = crop_names
 
-        # Find all images in root_dir (and optionally convert them to .jpg):
+        # Find all images in root_dir:
         print("Searching images..")
-        self.img_filepaths, n_converted = [], 0
+        self.img_filepaths = []
         for root, dirs, files in os.walk(root_dir):
             for name in files:
                 if name.endswith(self.img_extensions):
                     new_filename = os.path.join(root, name)
-                    if convert_all_to_jpg:
-                        if not name.endswith(".jpg"): # convert to jpg:
-                            orig_filename = os.path.join(root, name)
-                            new_filename  = os.path.join(root, os.path.splitext(name)[0] + ".jpg")
-                            img = Image.open(orig_filename).convert("RGB")
-                            img.save(new_filename, quality=95)
-                            os.remove(orig_filename)
-                            n_converted += 1
                     self.img_filepaths.append(new_filename)
-                    if n_converted % 100 == 0 and (n_converted > 0):
-                        print(f"Converted {n_converted} images to .jpg")
         
         if shuffle_filenames:
             random.shuffle(self.img_filepaths)
@@ -310,7 +299,6 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=12, help='Number of images to encode at once')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of workers to use for the dataloader')
     parser.add_argument('--force_reencode', action='store_true', help='Force CLIP re-encoding of all images (default: False)')
-    parser.add_argument('--convert_to_jpg', action='store_true', help='Convert all imgs to .jpg (default: False)')
     args = parser.parse_args()
 
     # Which img-crops to embed with CLIP and save to disk:
@@ -321,6 +309,5 @@ if __name__ == "__main__":
                                    clip_model_path = None, 
                                    force_reencode = args.force_reencode, 
                                    num_workers = args.num_workers,
-                                   convert_all_to_jpg = args.convert_to_jpg,
                                    crop_names = crop_names)
     dataset.process()

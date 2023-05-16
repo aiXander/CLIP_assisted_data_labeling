@@ -7,7 +7,7 @@ import random
 from tqdm import tqdm
 import argparse
 from matplotlib import pyplot as plt
-
+import json
 from utils.nn_model import device, SimpleFC
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -54,8 +54,6 @@ def find_model(model_name, model_dir = "models"):
             # return the absolute path to the model file:
             return os.path.join(model_dir, model_file)
     return None
-
-
 
 
 class CustomDataset(Dataset):

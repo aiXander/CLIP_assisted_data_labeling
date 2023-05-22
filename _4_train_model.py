@@ -183,7 +183,7 @@ if __name__ == "__main__":
     parser.add_argument('--dont_save', action='store_true', help='Force CLIP re-encoding of all images (default: False)')
 
     # Training args:
-    parser.add_argument('--test_fraction', type=float, default=0.2,  help='Fraction of the training data to use for testing')
+    parser.add_argument('--test_fraction', type=float, default=0.2,   help='Fraction of the training data to use for testing')
     parser.add_argument('--n_epochs',      type=int,   default=75,    help='Number of epochs to train for')
     parser.add_argument('--batch_size',    type=int,   default=128,   help='Batch size for training')
     parser.add_argument('--lr',            type=float, default=0.001, help='Learning rate')

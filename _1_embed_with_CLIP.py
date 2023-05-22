@@ -57,7 +57,7 @@ def extract_vgg_features(image, model_name='vgg', layer_index=10):
 
 
 class CLIP_Model:
-    def __init__(self, clip_model_name, clip_model_path = None, use_pickscore_encoder = True):
+    def __init__(self, clip_model_name, clip_model_path = None, use_pickscore_encoder = False):
         self.use_pickscore_encoder = use_pickscore_encoder
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         clip_model_name, clip_model_pretrained_name = clip_model_name.split('/', 2)
@@ -146,6 +146,10 @@ class CustomImageDataset(Dataset):
     def extract_crops(self, pil_img: Image,
                   sample_fraction_save_to_disk=0.0  # Save a fraction of crops to disk (can be used for debugging)
                   ) -> list:
+        """
+        Instead of just embedding the entire image once, we extract multiple crops from the image and embed each crop separately.
+        This provides more information to the classifier, and eg allows us to detect blurry images based on a small patch
+        """
         img = transforms.ToTensor()(pil_img).to(self.device).unsqueeze(0)
         c, h, w = img.shape[1:]
         crops, crop_names = [], []        

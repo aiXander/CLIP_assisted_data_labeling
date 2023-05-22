@@ -57,7 +57,7 @@ def extract_vgg_features(image, model_name='vgg', layer_index=10):
 
 
 class CLIP_Model:
-    def __init__(self, clip_model_name, clip_model_path = None, use_pickscore_encoder = False):
+    def __init__(self, clip_model_name, clip_model_path = None, use_pickscore_encoder = True):
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         clip_model_name, clip_model_pretrained_name = clip_model_name.split('/', 2)
@@ -65,7 +65,7 @@ class CLIP_Model:
         print(f"Loading CLIP model...")
         #self.tokenize = open_clip.get_tokenizer(clip_model_name)
 
-        if self.use_pickscore_encoder:
+        if use_pickscore_encoder:
             # see https://github.com/yuvalkirstain/PickScore
             from transformers import AutoProcessor, AutoModel
             self.clip_preprocess = AutoProcessor.from_pretrained("laion/CLIP-ViT-H-14-laion2B-s32B-b79K")

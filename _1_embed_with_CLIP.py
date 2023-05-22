@@ -57,52 +57,72 @@ def extract_vgg_features(image, model_name='vgg', layer_index=10):
 
 
 class CLIP_Model:
-    def __init__(self, clip_model_name, clip_model_path = None):
+    def __init__(self, clip_model_name, clip_model_path = None, use_pickscore_encoder = False):
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         clip_model_name, clip_model_pretrained_name = clip_model_name.split('/', 2)
 
-        print(f"Loading CLIP model {clip_model_name}...")
+        print(f"Loading CLIP model...")
         #self.tokenize = open_clip.get_tokenizer(clip_model_name)
 
-        self.clip_model, _, self.clip_preprocess = open_clip.create_model_and_transforms(
-            clip_model_name, 
-            pretrained=clip_model_pretrained_name, 
-            precision='fp16' if self.device == 'cuda' else 'fp32',
-            device=self.device,
-            jit=False,
-            cache_dir=clip_model_path
-        )
-        self.clip_model = self.clip_model.to(self.device)
-        self.clip_model.eval()
-        self.img_resolution = 336 if '336' in clip_model_name else 224
-        
-        # slightly hacky way to get the mean and std of the normalization transform of the loaded clip model:
-        self.target_mean, self.target_std = None, None
-        for transform in self.clip_preprocess.transforms:
-            if isinstance(transform, transforms.Normalize):
-                self.target_mean = transform.mean
-                self.target_std = transform.std
-                break
-        
-        self.clip_tensor_preprocess = transforms.Compose([
-            transforms.Resize(self.img_resolution, antialias=True),
-            transforms.CenterCrop(self.img_resolution),
-            transforms.Normalize(
-                mean=self.target_mean,
-                std=self.target_std,
-            ),
-        ])
-        
+        if self.use_pickscore_encoder:
+            from transformers import AutoProcessor, AutoModel
+            processor_name_or_path = "laion/CLIP-ViT-H-14-laion2B-s32B-b79K"
+            model_pretrained_name_or_path = "yuvalkirstain/PickScore_v1"
+            self.clip_preprocess = AutoProcessor.from_pretrained(processor_name_or_path)
+            self.clip_model = AutoModel.from_pretrained(model_pretrained_name_or_path).eval().to("cuda")
+            self.img_resolution = 224
+            clip_model_name = "PickScore_v1"
+        else:
+            self.clip_model, _, self.clip_preprocess = open_clip.create_model_and_transforms(
+                clip_model_name, 
+                pretrained=clip_model_pretrained_name, 
+                precision='fp16' if self.device == 'cuda' else 'fp32',
+                device=self.device,
+                jit=False,
+                cache_dir=clip_model_path
+            )
+            self.clip_model = self.clip_model.to(self.device)
+            self.clip_model.eval()
+            self.img_resolution = 336 if '336' in clip_model_name else 224
+            
+            # slightly hacky way to get the mean and std of the normalization transform of the loaded clip model:
+            self.target_mean, self.target_std = None, None
+            for transform in self.clip_preprocess.transforms:
+                if isinstance(transform, transforms.Normalize):
+                    self.target_mean = transform.mean
+                    self.target_std = transform.std
+                    break
+            
+            self.clip_tensor_preprocess = transforms.Compose([
+                transforms.Resize(self.img_resolution, antialias=True),
+                transforms.CenterCrop(self.img_resolution),
+                transforms.Normalize(
+                    mean=self.target_mean,
+                    std=self.target_std,
+                ),
+            ])
+            
         print(f"CLIP model {clip_model_name} with img_resolution {self.img_resolution} loaded!")
 
+    @torch.no_grad()
     def pt_imgs_to_features(self, list_of_tensors: list) -> torch.Tensor:
-        preprocessed_images = [self.clip_tensor_preprocess(img) for img in list_of_tensors]        
-        preprocessed_images = torch.stack(preprocessed_images).to(self.device)
-
-        with torch.no_grad(), torch.cuda.amp.autocast():
+        if self.use_pickscore_encoder:
+            list_of_pil_imgs = [transforms.ToPILImage()(img) for img in list_of_tensors]
+            preprocessed_images = self.clip_preprocess(
+                images=list_of_pil_imgs,
+                padding=True,
+                truncation=True,
+                max_length=77,
+                return_tensors="pt",
+            ).to("cuda")
+            image_features = self.clip_model.get_image_features(**preprocessed_images)
+        else:
+            preprocessed_images = [self.clip_tensor_preprocess(img) for img in list_of_tensors]        
+            preprocessed_images = torch.stack(preprocessed_images).to(self.device)
             image_features = self.clip_model.encode_image(preprocessed_images)
-            image_features /= image_features.norm(dim=-1, keepdim=True)
+        
+        image_features /= image_features.norm(dim=-1, keepdim=True)
 
         return image_features
     
@@ -244,6 +264,7 @@ class CLIP_Feature_Dataset():
     def __len__(self):
         return len(self.img_filepaths)
 
+    @torch.no_grad()
     def process(self):
         n_embedded, n_skipped = 0, 0
         print(f"Embedding dataset of {len(self.img_filepaths)} images...")

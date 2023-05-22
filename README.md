@@ -39,7 +39,7 @@ Metadata files (such as .txt prompt files or .npy files) that have the same base
 In all following scripts, the root_dir is the main directory where your training images live.
 Most scripts should also work if this root_dir has subfolders with eg different subsets of the data.
 
-### _0_rename_files.py
+### _0_prep_dataset.py
 The labels are kept in a .csv file with a unique identifier linking to each image.
 To be sure to avoid name clashes, it is highly recommended to rename each img (and any metadata files with the same name) with a unique uuid
 

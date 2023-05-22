@@ -57,7 +57,7 @@ def extract_vgg_features(image, model_name='vgg', layer_index=10):
 
 
 class CLIP_Model:
-    def __init__(self, clip_model_name, clip_model_path = None, use_pickscore_encoder = False):
+    def __init__(self, clip_model_name, clip_model_path = None, use_pickscore_encoder = True):
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         clip_model_name, clip_model_pretrained_name = clip_model_name.split('/', 2)
@@ -68,10 +68,8 @@ class CLIP_Model:
         if self.use_pickscore_encoder:
             # see https://github.com/yuvalkirstain/PickScore
             from transformers import AutoProcessor, AutoModel
-            processor_name_or_path = "laion/CLIP-ViT-H-14-laion2B-s32B-b79K"
-            model_pretrained_name_or_path = "yuvalkirstain/PickScore_v1"
-            self.clip_preprocess = AutoProcessor.from_pretrained(processor_name_or_path)
-            self.clip_model = AutoModel.from_pretrained(model_pretrained_name_or_path).eval().to("cuda")
+            self.clip_preprocess = AutoProcessor.from_pretrained("laion/CLIP-ViT-H-14-laion2B-s32B-b79K")
+            self.clip_model = AutoModel.from_pretrained("yuvalkirstain/PickScore_v1").eval().to(self.device)
             self.img_resolution = 224
             clip_model_name = "PickScore_v1"
         else:
@@ -83,8 +81,7 @@ class CLIP_Model:
                 jit=False,
                 cache_dir=clip_model_path
             )
-            self.clip_model = self.clip_model.to(self.device)
-            self.clip_model.eval()
+            self.clip_model = self.clip_model.to(self.device).eval()
             self.img_resolution = 336 if '336' in clip_model_name else 224
             
             # slightly hacky way to get the mean and std of the normalization transform of the loaded clip model:
@@ -112,9 +109,6 @@ class CLIP_Model:
             list_of_pil_imgs = [transforms.ToPILImage()(img) for img in list_of_tensors]
             preprocessed_images = self.clip_preprocess(
                 images=list_of_pil_imgs,
-                padding=True,
-                truncation=True,
-                max_length=77,
                 return_tensors="pt",
             ).to("cuda")
             image_features = self.clip_model.get_image_features(**preprocessed_images)

@@ -58,7 +58,7 @@ def extract_vgg_features(image, model_name='vgg', layer_index=10):
 
 class CLIP_Model:
     def __init__(self, clip_model_name, clip_model_path = None, use_pickscore_encoder = True):
-
+        self.use_pickscore_encoder = use_pickscore_encoder
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         clip_model_name, clip_model_pretrained_name = clip_model_name.split('/', 2)
 

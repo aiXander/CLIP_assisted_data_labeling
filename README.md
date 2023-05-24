@@ -18,6 +18,27 @@ Labeling supports ordering the images in several different ways:
 	--> Go back to (3) and iterate until satisfied with the predicted labels
 6. Filter your dataset using the predicted labels
 
+## Example usage:
+
+```
+export ROOT_DIR="path_to_your_img_dir"
+python _0_prep_dataset.py --root_dir $ROOT_DIR --mode rename
+python _1_embed_with_CLIP.py --root_dir $ROOT_DIR
+```
+Optional Step:
+```
+python _2_remove_duplicates.py --root_dir $ROOT_DIR --mode move
+```
+```
+python _3_label_images.py --root_dir $ROOT_DIR
+python _4_train_model.py --train_data_dir path_to_labeled_root_dir --train_data_names labeled_subfolder_name_01 labeled_subfolder_name_02  --model_name model_01 --test_fraction 0.20
+python _5_predict_labels.py --root_dir $ROOT_DIR --model_file name_of_trained_model_01 --copy_imgs_fraction 1.0 --batch_size 6
+```
+Finally, apply the trained model to a new dataset:
+```
+python _1_embed_with_CLIP.py --root_dir path_to_large_unlabeled_img_dir
+python _6_create_subset.py --input_dir path_to_large_unlabeled_img_dir --min_score 0.4 --extensions .jpg .json
+```
 
 ## Detailed walkthrough:
 
@@ -70,27 +91,6 @@ Predict the labels for the entire image dataset using the trained model: `--mode
 Finally, use the predicted labels to copy a subset of the dataset to an output folder.
 (Currently does not yet work on folders with subdirs)
 
-## Example usage scripts:
-
-```
-export ROOT_DIR="path_to_your_img_dir"
-python _0_prep_dataset.py --root_dir $ROOT_DIR --mode rename
-python _1_embed_with_CLIP.py --root_dir $ROOT_DIR
-```
-Optional Step:
-```
-python _2_remove_duplicates.py --root_dir $ROOT_DIR --mode move
-```
-```
-python _3_label_images.py --root_dir $ROOT_DIR
-python _4_train_model.py --train_data_dir path_to_labeled_root_dir --train_data_names labeled_subfolder_name_01 labeled_subfolder_name_02  --model_name model_01 --test_fraction 0.20
-python _5_predict_labels.py --root_dir $ROOT_DIR --model_file name_of_trained_model_01 --copy_imgs_fraction 1.0 --batch_size 6
-```
-Finally, apply the trained model to a new dataset:
-```
-python _1_embed_with_CLIP.py --root_dir path_to_large_unlabeled_img_dir
-python _6_create_subset.py --input_dir path_to_large_unlabeled_img_dir --min_score 0.4 --extensions .jpg .json
-```
 ## TODO
 - add requirements.txt
 - CLIP features are great for semantic labeling/filtering, but tend to ignore low-level details like texture sharpness, pixel grain and bluriness.

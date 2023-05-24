@@ -1,5 +1,6 @@
 import os
 import shutil
+import random
 import uuid
 import argparse
 from tqdm import tqdm
@@ -50,6 +51,12 @@ def process_file(orig_path, new_path, args):
 
     return converted, resized
 
+from natsort import natsorted, ns
+
+def nautilus_sort(filenames):
+    # Sort filenames naturally and case-insensitively
+    return natsorted(filenames, alg=ns.IGNORECASE)
+
 
 def prep_dataset_directory(args):
     
@@ -66,7 +73,12 @@ def prep_dataset_directory(args):
     print_verb = "Copied" if args.mode == 'copy' else "Renamed"
 
     for subdir, dirs, files in os.walk(args.root_dir):
-        print(f"Parsing {subdir}, subdirs: {dirs}, n_files: {len(files)}..")            
+        print(f"Parsing {subdir}, subdirs: {dirs}, n_files: {len(files)}..")
+
+        # Walk through this directory in alphabetical order:
+        files = nautilus_sort(files)      
+        for file in tqdm(files):
+            print(file)
 
         # Get all the unique filenames (without the extension) and store a list of present extensions for each one:
         unique_filenames = {}
@@ -76,14 +88,19 @@ def prep_dataset_directory(args):
                 unique_filenames[filename] = []
             unique_filenames[filename].append(file_extension)
 
-        for filename in tqdm(unique_filenames.keys()):            
-            unique_id = str(uuid.uuid4().hex)
+        # create sorted, but random uuids:
+        uuids = nautilus_sort([str(uuid.uuid4().hex) for _ in range(len(unique_filenames.keys()))])
+
+        if args.shuffle_file_order:
+            uuids = random.shuffle(uuids)
+
+        for i, filename in enumerate(unique_filenames.keys()):            
             extension_list = unique_filenames[filename]
 
             for ext in extension_list:
                 new_folder    = subdir.replace(args.root_dir, args.output_dir)
                 orig_filename = os.path.join(subdir, filename + ext)
-                new_filename  = os.path.join(new_folder, unique_id + ext)
+                new_filename  = os.path.join(new_folder, uuids[i] + ext)
 
                 try:
                     converted, resized = process_file(orig_filename, new_filename, args)
@@ -104,6 +121,7 @@ if __name__ == "__main__":
     parser.add_argument('--mode', type=str, default='copy', help='Modes: rename (in place) or copy')
     parser.add_argument('--max_n_pixels', type=int, default=1920*1080, help='Resize when an img is larger than this')
     parser.add_argument('--convert_imgs_to_jpg', action='store_true', help='Convert all imgs to .jpg (default: False)')
+    parser.add_argument('--shuffle_file_order', action='store_true', help='Randomly shuffle the alphabetical ordering of imgs (default: False)')
     args = parser.parse_args()
     
     if args.mode == 'copy' and args.output_dir is None:

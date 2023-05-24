@@ -13,6 +13,11 @@ import tkinter as tk
 from tkinter import ttk
 import shutil
 
+from natsort import natsorted, ns
+def nautilus_sort(filenames):
+    # Sort filenames naturally and case-insensitively
+    return natsorted(filenames, alg=ns.IGNORECASE)
+
 def create_backup(database_path):
     folder = os.path.dirname(database_path)
     files = glob.glob(folder + "/*")
@@ -268,7 +273,7 @@ def load(uuid, database):
         
 def label_dataset(root_directory, skip_labeled_files = True):
     label_file = os.path.join(os.path.dirname(root_directory), os.path.basename(root_directory) + ".csv")
-    image_files = sorted(glob.glob(os.path.join(root_directory, "**/*.jpg"), recursive=True))
+    image_files = nautilus_sort(glob.glob(os.path.join(root_directory, "**/*.jpg"), recursive=True))
 
     if os.path.exists(label_file):
         database = pd.read_csv(label_file)

@@ -52,7 +52,6 @@ def process_file(orig_path, new_path, args):
     return converted, resized
 
 from natsort import natsorted, ns
-
 def nautilus_sort(filenames):
     # Sort filenames naturally and case-insensitively
     return natsorted(filenames, alg=ns.IGNORECASE)

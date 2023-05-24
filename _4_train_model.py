@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import argparse
 import pickle
+from tqdm import tqdm
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset, random_split
@@ -17,11 +18,11 @@ def train(args, crop_names, use_img_stat_features):
 
     features = []
     labels = []
-    skips = 0
 
     # Load all the labeled training data from disk:
     for train_data_name in args.train_data_names:
         n_samples = 0
+        skips = 0
 
         # Load the labels and uuid's from labels.csv
         data = pd.read_csv(os.path.join(args.train_data_dir, train_data_name + '.csv'))
@@ -31,7 +32,8 @@ def train(args, crop_names, use_img_stat_features):
         data = data.sample(frac=1).reset_index(drop=True)
 
         # Load the feature vectors from disk (uuid.pt)
-        for index, row in data.iterrows():
+        print(f"\nLoading {train_data_name} features from disk...")
+        for index, row in tqdm(data.iterrows()):
             try:
                 uuid = row["uuid"]
                 label = row["label"]
@@ -183,7 +185,7 @@ if __name__ == "__main__":
     parser.add_argument('--dont_save', action='store_true', help='Force CLIP re-encoding of all images (default: False)')
 
     # Training args:
-    parser.add_argument('--test_fraction', type=float, default=0.2,   help='Fraction of the training data to use for testing')
+    parser.add_argument('--test_fraction', type=float, default=0.20,   help='Fraction of the training data to use for testing')
     parser.add_argument('--n_epochs',      type=int,   default=75,    help='Number of epochs to train for')
     parser.add_argument('--batch_size',    type=int,   default=128,   help='Batch size for training')
     parser.add_argument('--lr',            type=float, default=0.001, help='Learning rate')

@@ -78,9 +78,9 @@ python _0_prep_dataset.py --root_dir $ROOT_DIR --mode rename
 python _1_embed_with_CLIP.py --root_dir $ROOT_DIR
 ```
 Optional Step:
-	```
-	python _2_remove_duplicates.py --root_dir $ROOT_DIR --mode move
-	```
+```
+python _2_remove_duplicates.py --root_dir $ROOT_DIR --mode move
+```
 ```
 python _3_label_images.py --root_dir $ROOT_DIR
 python _4_train_model.py --train_data_dir path_to_labeled_root_dir --train_data_names labeled_subfolder_name_01 labeled_subfolder_name_02  --model_name model_01 --test_fraction 0.20

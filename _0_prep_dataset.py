@@ -32,7 +32,7 @@ def process_file(orig_path, new_path, args):
             img = img.resize((new_width, new_height), Image.ANTIALIAS)
             if args.convert_imgs_to_jpg:
                 new_path = os.path.splitext(new_path)[0] + '.jpg'
-            img.save(new_path)
+            img.save(new_path, quality=95)
             resized = 1
 
         if args.convert_imgs_to_jpg and not resized:

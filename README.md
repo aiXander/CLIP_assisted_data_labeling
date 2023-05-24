@@ -15,7 +15,6 @@ Labeling supports ordering the images in several different ways:
     - diversity sort (tries to start with an as diverse as possible subset of the data)
 4. Train a NN regressor/classifier on the current database (CLIP-embedding --> label)
 5. Predict the labels for all the unlabeled images	
-
 	--> Go back to (3) and iterate until satisfied with the predicted labels
 6. Filter your dataset using the predicted labels
 
@@ -23,18 +22,9 @@ Labeling supports ordering the images in several different ways:
 ## Detailed walkthrough:
 
 ### 0. Preprocessing your data
-Best practice is to start by converting all your images to the same format eg (.jpg), using something like:
-
-```
-cd ../root_of_your_img_dir/
-sudo apt-get install imagemagick
-mogrify -format jpg *.png  && rm *.png
-mogrify -format jpg *.JPEG && rm *.JPEG
-mogrify -format jpg *.jpeg && rm *.jpeg
-mogrify -format jpg *.webp && rm *.webp
-```
-
-Metadata files (such as .txt prompt files or .npy files) that have the same basename (but different extension) as the image files can remain and will be handled correctly.
+Recommended to use the --convert_imgs_to_jpg flag to auto-convert all your images to .jpg
+Huge images will also be auto-resized (control max_res with --max_n_pixels flag)
+Metadata files (such as .txt prompt files or .json files) that have the same basename (but different extension) as the image files can remain and will be handled correctly.
 
 In all following scripts, the root_dir is the main directory where your training images live.
 Most scripts should also work if this root_dir has subfolders with eg different subsets of the data.
@@ -68,11 +58,12 @@ If a --filename--.txt file is found, the text in it will be displayed as prompt 
 ### _4_train_model.py
 Train a simple 3-layer FC-neural network with ReLu's based on the flattened CLIP-crop embeddings to regress / classify the image labels
 Flow:
-	- first optimize hyperparameters using eg `--test_fraction 0.15` and `--dont_save`
-	- finally do a final training run using all the data
+	- first optimize hyperparameters using eg `--test_fraction 0.15 --n_epochs 100` and `--dont_save`
+	- look at the train/test loss curves to figure out the best amount of epochs to train
+	- finally do a final training run using all the data using `--test_fraction 0.0`
 
 ### _5_predict_labels.py
-Predict the labels for the entire image dataset using the trained model
+Predict the labels for the entire image dataset using the trained model: `--model_file name_of_your_model`
 `--copy_named_imgs_fraction` can be used to see a sneak peak of labeled results in a tmp output_directory
 
 ### _6_create_subset.py

@@ -3,9 +3,9 @@ Python toolkit to quickly label/filter lots of images using CLIP embeddings + ac
 Main use-case is to filter large image datasets that contain lots of bad images you don't want to train on.
 
 ## Overview:
-0. Create unique uuid's for each img in the root_dir
+0. (optional, but recommended) Create unique uuid's for each img in the root_dir
 1. Embed all the images in the database using CLIP
-2. Remove potential duplicate images based on a cosine-similarity threshold in CLIP-space
+2. (optional) Remove potential duplicate images based on a cosine-similarity threshold in CLIP-space
 3. Manually label a few images (10 minutes of labeling is usually sufficient to start)
 Labeling supports ordering the images in several different ways:
     - by uuid (= random)

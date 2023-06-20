@@ -93,6 +93,7 @@ Finally, use the predicted labels to copy a subset of the dataset to an output f
 
 ## TODO
 - add requirements.txt
+- add a keyboard mapping class to the labeling code that has different mappings depending on which OS is running the code (currently, the keys are hardcoded for Ubuntu 20.04)
 - CLIP features are great for semantic labeling/filtering, but tend to ignore low-level details like texture sharpness, pixel grain and bluriness.
 The pipeline can probably be improved by adding additional features (lpips, vgg, ...)
 - Currently the scoring model is just a heavily regularized 3-layer FC-neural network. It's likely that adding a more linear component (eg SVM) could make the predictions more robust

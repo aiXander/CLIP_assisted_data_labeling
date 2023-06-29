@@ -66,6 +66,7 @@ class CLIP_Model:
         #self.tokenize = open_clip.get_tokenizer(clip_model_name)
 
         if use_pickscore_encoder:
+            print("Using PickScore encoder instead of vanilla CLIP!")
             # see https://github.com/yuvalkirstain/PickScore
             from transformers import AutoProcessor, AutoModel
             self.clip_preprocess = AutoProcessor.from_pretrained("laion/CLIP-ViT-H-14-laion2B-s32B-b79K")

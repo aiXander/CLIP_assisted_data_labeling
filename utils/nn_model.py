@@ -24,6 +24,9 @@ class SimpleFC(nn.Module):
                 layers.append(nn.ReLU())
                 layers.append(nn.Dropout(p=dropout_prob))
 
+        # Add sigmoid at the end: (assumes that all labels are normalized in the range [0,1])
+        layers.append(nn.Sigmoid())
+
         self.layers = nn.ModuleList(layers)
 
         if verbose > 0: # Print the final network layout:

@@ -9,10 +9,19 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset, random_split
 from torch.optim import Adam
 import matplotlib.pyplot as plt
-from utils.nn_model import device, SimpleFC
+from nn_model import device, SimpleFC
 from sklearn.metrics import r2_score
 
-def train(args, crop_names, use_img_stat_features):
+"""
+given a dataset of prompt_embeds / scores, try to learn a mapping from prompt_embeds to scores
+
+cd /home/rednax/SSD2TB/Xander_Tools/CLIP_assisted_data_labeling/utils
+python train_latent_regressor.py --train_data_dir /home/rednax/SSD2TB/Fast_Datasets/SD/Labeling/datasets --train_data_names eden --model_name c_uc_regressor --test_fraction 0.4 --dont_save
+
+
+"""
+
+def train(args):
 
     torch.manual_seed(args.random_seed)
     np.random.seed(args.random_seed)
@@ -32,26 +41,15 @@ def train(args, crop_names, use_img_stat_features):
         # randomly shuffle the data:
         data = data.sample(frac=1).reset_index(drop=True)
 
-        # Load the feature vectors from disk (uuid.pt)
+        # Load the prompt_embeds from disk (uuid.pth)
         print(f"\nLoading {train_data_name} features from disk...")
         for index, row in tqdm(data.iterrows()):
             try:
                 uuid = row["uuid"]
                 label = row["label"]
-                feature_dict = torch.load(f"{args.train_data_dir}/{train_data_name}/{uuid}.pt")
-                clip_features = torch.cat([feature_dict[crop_name] for crop_name in crop_names if crop_name in feature_dict], dim=0).flatten()
-                missing_crops = set(crop_names) - set(feature_dict.keys())
-                if missing_crops:
-                    raise Exception(f"Missing crops {missing_crops} for {uuid}, either re-embed the image, or adjust the crop_names variable for training!")
-
-                if use_img_stat_features:
-                    img_stat_feature_names = [key for key in feature_dict.keys() if key.startswith("img_stat_")]
-                    img_stat_features = torch.stack([feature_dict[img_stat_feature_name] for img_stat_feature_name in img_stat_feature_names], dim=0).to(device)
-                    all_features = torch.cat([clip_features, img_stat_features], dim=0)
-                else:
-                    all_features = clip_features
-
-                features.append(all_features)
+                prompt_embeds = torch.load(f"{args.train_data_dir}/{train_data_name}/{uuid}.pth")
+                print(prompt_embeds.shape)
+                features.append(prompt_embeds.flatten())
                 labels.append(label)
                 n_samples += 1
             except: # simply skip the sample if something goes wrong
@@ -98,7 +96,6 @@ def train(args, crop_names, use_img_stat_features):
 
     # 3. Create the network
     model = SimpleFC(features.shape[1], args.hidden_sizes, 1, 
-                    crop_names = crop_names,
                     dropout_prob=args.dropout_prob, 
                     verbose = args.print_network_layout)
     model.train()
@@ -109,9 +106,9 @@ def train(args, crop_names, use_img_stat_features):
     criterion = nn.MSELoss()
     losses    = [[], []] # train, test losses
 
-    def get_test_loss(model, test_loader, epoch, plot_correlation=1):
+    def get_test_loss(model, test_loader, epoch, plot_correlation = 1):
         if len(test_loader) == 0:
-            return -1.0, -1.0
+            return -1.0, -1
         model.eval()
         test_loss, dummy_test_loss = 0.0, 0.0
         test_preds, test_labels = [], []
@@ -129,7 +126,7 @@ def train(args, crop_names, use_img_stat_features):
                     test_preds.append(outputs.cpu().numpy())
                     test_labels.append(labels.cpu().numpy())
 
-        if plot_correlation and epoch % 5 == 0:
+        if plot_correlation and epoch % 10 == 0:
             test_preds = np.concatenate(test_preds, axis=0)
             test_labels = np.concatenate(test_labels, axis=0)
             plt.figure(figsize=(8, 8))
@@ -211,23 +208,20 @@ if __name__ == "__main__":
     parser.add_argument('--train_data_dir', type=str, help='Root directory of the (optionally multiple) datasets')
     parser.add_argument('--train_data_names', type=str, nargs='+', help='Names of the dataset files to train on (space separated)')
     parser.add_argument('--model_name', type=str, default='regressor', help='Name of the model when saved to disk')
-    parser.add_argument('--dont_save', action='store_true', help='skip saving the model to disk')
+    parser.add_argument('--dont_save', action='store_true', help='dont save the model to disk')
 
     # Training args:
-    parser.add_argument('--test_fraction', type=float, default=0.20,  help='Fraction of the training data to use for testing')
-    parser.add_argument('--n_epochs',      type=int,   default=100,   help='Number of epochs to train for')
-    parser.add_argument('--batch_size',    type=int,   default=128,   help='Batch size for training')
+    parser.add_argument('--test_fraction', type=float, default=0.25,   help='Fraction of the training data to use for testing')
+    parser.add_argument('--n_epochs',      type=int,   default=100,    help='Number of epochs to train for')
+    parser.add_argument('--batch_size',    type=int,   default=128,    help='Batch size for training')
     parser.add_argument('--lr',            type=float, default=0.0005, help='Learning rate')
-    parser.add_argument('--weight_decay',  type=float, default=0.001, help='Weight decay for the Adam optimizer (default: 0.001)')
-    parser.add_argument('--dropout_prob',  type=float, default=0.5,   help='Dropout probability')
-    parser.add_argument('--hidden_sizes',  type=int,   nargs='+',     default=[264,128,64], help='Hidden sizes of the FC neural network')
+    parser.add_argument('--weight_decay',  type=float, default=0.01, help='Weight decay for the Adam optimizer (default: 0.001)')
+    parser.add_argument('--dropout_prob',  type=float, default=0.75,   help='Dropout probability')
+    parser.add_argument('--hidden_sizes',  type=int,   nargs='+',     default=[512,128,64], help='Hidden sizes of the FC neural network')
 
     parser.add_argument('--print_network_layout', action='store_true', help='Print the network layout')
     parser.add_argument('--random_seed', type=int, default=42, help='Random seed for reproducibility')
     args = parser.parse_args()
 
-    # Custom switches to turn on/off certain features:
-    crop_names = ['centre_crop', 'square_padded_crop', 'subcrop1_0.15', 'subcrop2_0.1']
-    use_img_stat_features = 0
 
-    train(args, crop_names, use_img_stat_features)
+    train(args)

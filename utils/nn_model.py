@@ -23,7 +23,7 @@ class SimpleFC(nn.Module):
             layers.append(nn.Linear(layer_sizes[i], layer_sizes[i+1]))
             # add ReLU and Dropout after each layer except the last one
             if i < len(layer_sizes) - 2:
-                layers.append(nn.ReLU())
+                layers.append(nn.LeakyReLU())
                 layers.append(nn.Dropout(p=dropout_prob))
 
         # Add sigmoid at the end: (assumes that all labels are normalized in the range [0,1])
@@ -40,7 +40,7 @@ class SimpleFC(nn.Module):
         return x
     
 
-    
+
 class SimpleconvFC(nn.Module):
     def __init__(self, input_size, hidden_sizes, output_size, 
                  crop_names = ['centre_crop', 'square_padded_crop', 'subcrop1', 'subcrop2'],

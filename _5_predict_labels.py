@@ -159,7 +159,9 @@ def predict_labels(args):
 
     print("Done!")
     print(f"{n_predictions} of {len(img_files)} img predicted. (the rest was skipped due to errors)")
+    print(f"Average predicted label: {database['predicted_label'].mean():.3f}")
     print(f"Database saved at {label_file}")
+
 
 
 if __name__ == "__main__":

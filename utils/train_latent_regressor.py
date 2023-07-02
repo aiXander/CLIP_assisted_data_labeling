@@ -21,10 +21,6 @@ cd /home/rednax/SSD2TB/Xander_Tools/CLIP_assisted_data_labeling/utils
 python train_latent_regressor.py --train_data_dir /home/rednax/SSD2TB/Github_repos/cog/eden-sd-pipelines/eden/xander/images/random_c_uc_fin_dataset --train_data_names no_lora eden eden2 --model_name c_uc_regressor --test_fraction 0.4 --dont_save
 
 
-cd /home/rednax/SSD2TB/Xander_Tools/CLIP_assisted_data_labeling/utils
-python train_latent_regressor.py --train_data_dir /home/rednax/SSD2TB/Github_repos/cog/eden-sd-pipelines/eden/xander/images/random_c_uc_fin_dataset --train_data_names no_lora --model_name c_uc_regressor --test_fraction 0.4 --dont_save
-
-
 """
 
 def train(args):
@@ -55,8 +51,7 @@ def train(args):
                 # load row["label"] is it exists, otherwise load row["predicted_label"]
                 label = row["label"] if not np.isnan(row["label"]) else row["predicted_label"]*0.5
                 prompt_embeds = torch.load(f"{args.train_data_dir}/{train_data_name}/{uuid}.pth")
-                features.append(prompt_embeds)
-                #features.append(prompt_embeds.flatten())
+                features.append(prompt_embeds.flatten())
                 labels.append(label)
                 n_samples += 1
             except: # simply skip the sample if something goes wrong
@@ -102,7 +97,7 @@ def train(args):
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     # 3. Create the network
-    model = SimpleconvFC(features.shape[1], args.hidden_sizes, 1, 
+    model = SimpleFC(features.shape[1], args.hidden_sizes, 1, 
                     dropout_prob=args.dropout_prob, 
                     verbose = args.print_network_layout,
                     data_min = labels_min, data_max = labels_max)
@@ -221,8 +216,8 @@ if __name__ == "__main__":
 
     # Training args:
     parser.add_argument('--test_fraction', type=float, default=0.25,   help='Fraction of the training data to use for testing')
-    parser.add_argument('--n_epochs',      type=int,   default=100,    help='Number of epochs to train for')
-    parser.add_argument('--batch_size',    type=int,   default=64,     help='Batch size for training')
+    parser.add_argument('--n_epochs',      type=int,   default=80,    help='Number of epochs to train for')
+    parser.add_argument('--batch_size',    type=int,   default=32,     help='Batch size for training')
     parser.add_argument('--lr',            type=float, default=0.0005, help='Learning rate')
     parser.add_argument('--weight_decay',  type=float, default=0.0005, help='Weight decay for the Adam optimizer (default: 0.001)')
     parser.add_argument('--dropout_prob',  type=float, default=0.5,    help='Dropout probability')

@@ -141,6 +141,7 @@ def train(args, crop_names, use_img_stat_features):
             plt.xlim(0, 1)
             plt.ylim(0, 1)
             plt.savefig("test_set_predictions.png")
+            plt.close()
 
         test_loss /= len(test_loader)
         dummy_test_loss /= len(test_loader)
@@ -216,9 +217,9 @@ if __name__ == "__main__":
     # Training args:
     parser.add_argument('--test_fraction', type=float, default=0.20,  help='Fraction of the training data to use for testing')
     parser.add_argument('--n_epochs',      type=int,   default=100,   help='Number of epochs to train for')
-    parser.add_argument('--batch_size',    type=int,   default=128,   help='Batch size for training')
+    parser.add_argument('--batch_size',    type=int,   default=32,   help='Batch size for training')
     parser.add_argument('--lr',            type=float, default=0.0005, help='Learning rate')
-    parser.add_argument('--weight_decay',  type=float, default=0.001, help='Weight decay for the Adam optimizer (default: 0.001)')
+    parser.add_argument('--weight_decay',  type=float, default=0.0004, help='Weight decay for the Adam optimizer')
     parser.add_argument('--dropout_prob',  type=float, default=0.5,   help='Dropout probability')
     parser.add_argument('--hidden_sizes',  type=int,   nargs='+',     default=[264,128,64], help='Hidden sizes of the FC neural network')
 

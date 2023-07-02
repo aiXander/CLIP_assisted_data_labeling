@@ -9,14 +9,20 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset, random_split
 from torch.optim import Adam
 import matplotlib.pyplot as plt
-from nn_model import device, SimpleFC
+from nn_model import device, SimpleFC, SimpleconvFC
 from sklearn.metrics import r2_score
 
 """
-given a dataset of prompt_embeds / scores, try to learn a mapping from prompt_embeds to scores
+This is an unfinished exerpiment:
+given a dataset of StableDiffusion prompt_embeds / aesthetic scores, try to learn a mapping from prompt_embeds to scores
+The idea here is to use this regressor to do prompt-augmentation in latent space.
 
 cd /home/rednax/SSD2TB/Xander_Tools/CLIP_assisted_data_labeling/utils
-python train_latent_regressor.py --train_data_dir /home/rednax/SSD2TB/Fast_Datasets/SD/Labeling/datasets --train_data_names eden --model_name c_uc_regressor --test_fraction 0.4 --dont_save
+python train_latent_regressor.py --train_data_dir /home/rednax/SSD2TB/Github_repos/cog/eden-sd-pipelines/eden/xander/images/random_c_uc_fin_dataset --train_data_names no_lora eden eden2 --model_name c_uc_regressor --test_fraction 0.4 --dont_save
+
+
+cd /home/rednax/SSD2TB/Xander_Tools/CLIP_assisted_data_labeling/utils
+python train_latent_regressor.py --train_data_dir /home/rednax/SSD2TB/Github_repos/cog/eden-sd-pipelines/eden/xander/images/random_c_uc_fin_dataset --train_data_names no_lora --model_name c_uc_regressor --test_fraction 0.4 --dont_save
 
 
 """
@@ -37,7 +43,7 @@ def train(args):
         # Load the labels and uuid's from labels.csv
         data = pd.read_csv(os.path.join(args.train_data_dir, train_data_name + '.csv'))
         # Drop all the rows where "label" is NaN:
-        data = data.dropna(subset=["label"])
+        #data = data.dropna(subset=["label"])
         # randomly shuffle the data:
         data = data.sample(frac=1).reset_index(drop=True)
 
@@ -46,10 +52,11 @@ def train(args):
         for index, row in tqdm(data.iterrows()):
             try:
                 uuid = row["uuid"]
-                label = row["label"]
+                # load row["label"] is it exists, otherwise load row["predicted_label"]
+                label = row["label"] if not np.isnan(row["label"]) else row["predicted_label"]*0.5
                 prompt_embeds = torch.load(f"{args.train_data_dir}/{train_data_name}/{uuid}.pth")
-                print(prompt_embeds.shape)
-                features.append(prompt_embeds.flatten())
+                features.append(prompt_embeds)
+                #features.append(prompt_embeds.flatten())
                 labels.append(label)
                 n_samples += 1
             except: # simply skip the sample if something goes wrong
@@ -95,9 +102,10 @@ def train(args):
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     # 3. Create the network
-    model = SimpleFC(features.shape[1], args.hidden_sizes, 1, 
+    model = SimpleconvFC(features.shape[1], args.hidden_sizes, 1, 
                     dropout_prob=args.dropout_prob, 
-                    verbose = args.print_network_layout)
+                    verbose = args.print_network_layout,
+                    data_min = labels_min, data_max = labels_max)
     model.train()
     model.to(device)
 
@@ -138,6 +146,7 @@ def train(args):
             plt.xlim(0, 1)
             plt.ylim(0, 1)
             plt.savefig("test_set_predictions.png")
+            plt.close()
 
         test_loss /= len(test_loader)
         dummy_test_loss /= len(test_loader)
@@ -213,15 +222,14 @@ if __name__ == "__main__":
     # Training args:
     parser.add_argument('--test_fraction', type=float, default=0.25,   help='Fraction of the training data to use for testing')
     parser.add_argument('--n_epochs',      type=int,   default=100,    help='Number of epochs to train for')
-    parser.add_argument('--batch_size',    type=int,   default=128,    help='Batch size for training')
+    parser.add_argument('--batch_size',    type=int,   default=64,     help='Batch size for training')
     parser.add_argument('--lr',            type=float, default=0.0005, help='Learning rate')
-    parser.add_argument('--weight_decay',  type=float, default=0.01, help='Weight decay for the Adam optimizer (default: 0.001)')
-    parser.add_argument('--dropout_prob',  type=float, default=0.75,   help='Dropout probability')
-    parser.add_argument('--hidden_sizes',  type=int,   nargs='+',     default=[512,128,64], help='Hidden sizes of the FC neural network')
+    parser.add_argument('--weight_decay',  type=float, default=0.0005, help='Weight decay for the Adam optimizer (default: 0.001)')
+    parser.add_argument('--dropout_prob',  type=float, default=0.5,    help='Dropout probability')
+    parser.add_argument('--hidden_sizes',  type=int,   nargs='+',      default=[128,128,64], help='Hidden sizes of the FC neural network')
 
     parser.add_argument('--print_network_layout', action='store_true', help='Print the network layout')
     parser.add_argument('--random_seed', type=int, default=42, help='Random seed for reproducibility')
     args = parser.parse_args()
-
 
     train(args)

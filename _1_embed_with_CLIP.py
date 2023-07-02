@@ -317,7 +317,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_dir', type=str, help='Root directory of the dataset (can contain subdirectories)')
     parser.add_argument('--clip_model_name', type=str, default = "ViT-L-14-336/openai", help='Name of the open_clip model, see https://github.com/mlfoundations/open_clip/tree/main/src/open_clip/model_configs')
-    parser.add_argument('--batch_size', type=int, default=4, help='Number of images to encode at once')
+    parser.add_argument('--batch_size', type=int, default=8, help='Number of images to encode at once')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of workers to use for the dataloader')
     parser.add_argument('--force_reencode', action='store_true', help='Force CLIP re-encoding of all images (default: False)')
     args = parser.parse_args()

@@ -109,7 +109,7 @@ def train(args, crop_names, use_img_stat_features):
 
     train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+    test_loader  = DataLoader(test_dataset,  batch_size=args.batch_size, shuffle=False)
 
     # 3. Create the regression network:
     model = SimpleFC(features.shape[1], args.hidden_sizes, 1, args.clip_models_to_use,

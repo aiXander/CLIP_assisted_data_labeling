@@ -82,7 +82,7 @@ class CustomDataset(Dataset):
             img_features = torch.cat(sample_features, dim=0).flatten()
             self.feature_shape = img_features.shape
         except Exception as e:
-            print(f"WARNING: {e} for {uuid}, skipping this sample..")
+            print(f"WARNING: {str(e)} for {uuid}, skipping this sample..")
             return "", "", torch.zeros(self.feature_shape, device=device)
 
         return uuid, img_path, img_features
@@ -129,7 +129,7 @@ def predict_labels(args):
         uuids = list(uuids)
         predicted_labels = model(features.to(device).float()).cpu().numpy().squeeze()
 
-        # filter out samples that have an empty string as uuid:
+        # filter out samples that have an empty string as uuid (those files caused errors in the dataloader):
         remove_indices   = [i for i, uuid in enumerate(uuids) if uuid == ""]
         uuids            = [uuid for i, uuid in enumerate(uuids) if i not in remove_indices]
         img_paths        = [img_path for i, img_path in enumerate(img_paths) if i not in remove_indices]

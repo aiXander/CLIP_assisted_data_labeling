@@ -333,17 +333,18 @@ class CLIP_Feature_Dataset():
             if (n_embedded + n_skipped) % 1000 == 0:
                 print(f"Skipped {n_skipped} images, embedded {n_embedded} images")
 
-        print("\n\n--- Feature encoding done! ---\n")
+        print("\n--- Feature encoding done! ---\n")
         print(f"Embedded {n_embedded} images ({n_skipped} images were already embedded).")
         print(f"All feature vector dicts were saved to {self.root_dir}")
         print(f"Subcrop names that were saved: {self.crop_names}")
+        print("-----------------------------------------------\n\n")
 
 
 if __name__ == "__main__":
+    
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_dir', type=str, help='Root directory of the dataset (can contain subdirectories)')
-    parser.add_argument('--clip_models_to_use', metavar='S', type=str, nargs='+', default=['ViT-L-14-336/openai', 'ViT-bigG-14/laion2b_s39b_b160k'], help='Which CLIP models to use for embedding')
-    #parser.add_argument('--clip_model_name', type=str, default = "ViT-L-14-336/openai", help='Name of the open_clip model BACKSLASH pretraining dataset name, (open_clip.list_pretrained()) see https://github.com/mlfoundations/open_clip/tree/main/src/open_clip/model_configs and https://github.com/mlfoundations/open_clip/blob/main/src/open_clip/pretrained.py#L139')
+    parser.add_argument('--clip_models_to_use', type=str, nargs='+', default=['ViT-L-14-336/openai'], help='Which (possibly multiple) CLIP models to use for embedding, defaults to ViT-L-14-336/openai')
     parser.add_argument('--batch_size', type=int, default=8, help='Number of images to encode at once')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of workers to use for the dataloader')
     parser.add_argument('--force_reencode', action='store_true', help='Force CLIP re-encoding of all images (default: False)')

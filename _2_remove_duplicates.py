@@ -5,8 +5,9 @@ import argparse
 import random
 from tqdm import tqdm
 
-def get_paths_and_embeddings(root_dir, chunk_size, crop_to_use, shuffle = False):
-    for subdir, dirs, files in os.walk(root_dir):
+def get_paths_and_embeddings(args, crop_to_use, shuffle = False):
+
+    for subdir, dirs, files in os.walk(args.root_dir):
         print(f"\nParsing {subdir}, subdirs: {dirs}, n_files: {len(files)}..")
         paths, embeddings = [], []
         if shuffle:
@@ -27,11 +28,18 @@ def get_paths_and_embeddings(root_dir, chunk_size, crop_to_use, shuffle = False)
                 try:
                     path = os.path.join(subdir, filename + '.jpg')
                     embedding_dict = torch.load(os.path.join(subdir, filename + '.pt'))
+
+                    if args.clip_model_to_use is None: # use the first key in the embedding_dict:
+                        args.clip_model_to_use = list(embedding_dict.keys())[0]
+                        print(f"\n ----> args.clip_model_to_use was not specified, defaulting to first found one: {args.clip_model_to_use} \n")
+
+                    embedding_dict = embedding_dict[args.clip_model_to_use]
+
                     embedding = embedding_dict[crop_to_use].squeeze().to(torch.float16)
                     paths.append(path)
                     embeddings.append(embedding)
 
-                    if len(paths) == chunk_size:
+                    if len(paths) == args.chunk_size:
                         yield paths, embeddings
                         paths, embeddings = [], []
                 except:
@@ -48,7 +56,7 @@ def find_near_duplicates(args,
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    for paths, embeddings in get_paths_and_embeddings(args.root_dir, args.chunk_size, crop_to_use):
+    for paths, embeddings in get_paths_and_embeddings(args, crop_to_use):
         if len(paths) == 0 or len(embeddings) == 0:
             continue
 
@@ -92,7 +100,7 @@ def find_near_duplicates(args,
 
 
 def fix_duplicate(duplicate_index, img_paths, outdir, sim_value, mode):
-    # TODO: Remove the duplicate with the lowest aesthetic score
+    # TODO: Remove the duplicate with the lowest predicted aesthetic score
 
     dirname = os.path.dirname(img_paths[0])
     # get the two basenames without extensions:
@@ -122,6 +130,7 @@ if __name__ == '__main__':
     parser.add_argument('--root_dir', type=str, help='Root directory of the dataset')
     parser.add_argument('--threshold', type=float, default=0.98, help='Cosine-similarity threshold for near-duplicate detection')
     parser.add_argument('--mode', type=str, default='copy', help='copy / move, Use copy to test the script, move after')
+    parser.add_argument('--clip_model_to_use', type=str, default=None, help='Which CLIP model to use, if None, use the first one found')
     parser.add_argument('--chunk_size', type=int, default=10000, help='Chunk the duplicate detection into batches of this size to avoid OOM')
     parser.add_argument('--test', action='store_true', help='Test the script without doing anything')
     args = parser.parse_args()

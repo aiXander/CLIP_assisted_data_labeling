@@ -18,6 +18,13 @@ import torchvision.transforms as transforms
 from torchvision import models
 from PIL import Image
 
+if 0:
+    print("Pretrained clip models available:")
+    options = open_clip.list_pretrained()
+    for option in options:
+        print(option)
+    print("-----------------------------")
+
 def extract_vgg_features(image, model_name='vgg', layer_index=10):
     # Load pre-trained model
     if model_name == 'vgg':
@@ -60,30 +67,31 @@ class CLIP_Model:
     def __init__(self, clip_model_name, clip_model_path = None, use_pickscore_encoder = False):
         self.use_pickscore_encoder = use_pickscore_encoder
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        clip_model_name, clip_model_pretrained_name = clip_model_name.split('/', 2)
+        self.clip_model_name = clip_model_name
+        self.clip_model_architecture, self.clip_model_pretrained_dataset_name = self.clip_model_name.split('/', 2)
 
-        print(f"Loading CLIP model...")
-        #self.tokenize = open_clip.get_tokenizer(clip_model_name)
+        print(f"Loading CLIP model {self.clip_model_name}...")
+        #self.tokenize = open_clip.get_tokenizer(self.clip_model_architecture)
 
         if use_pickscore_encoder:
             print("Using PickScore encoder instead of vanilla CLIP!")
             # see https://github.com/yuvalkirstain/PickScore
             from transformers import AutoProcessor, AutoModel
             self.clip_preprocess = AutoProcessor.from_pretrained("laion/CLIP-ViT-H-14-laion2B-s32B-b79K")
-            self.clip_model = AutoModel.from_pretrained("yuvalkirstain/PickScore_v1").eval().to(self.device)
-            self.img_resolution = 224
-            clip_model_name = "PickScore_v1"
+            self.clip_model      = AutoModel.from_pretrained("yuvalkirstain/PickScore_v1").eval().to(self.device)
+            self.img_resolution  = 224
+            self.clip_model_architecture = "PickScore_v1"
         else:
             self.clip_model, _, self.clip_preprocess = open_clip.create_model_and_transforms(
-                clip_model_name, 
-                pretrained=clip_model_pretrained_name, 
+                self.clip_model_architecture, 
+                pretrained=self.clip_model_pretrained_dataset_name, 
                 precision='fp16' if self.device == 'cuda' else 'fp32',
                 device=self.device,
                 jit=False,
                 cache_dir=clip_model_path
             )
             self.clip_model = self.clip_model.to(self.device).eval()
-            self.img_resolution = 336 if '336' in clip_model_name else 224
+            self.img_resolution = 336 if '336' in self.clip_model_architecture else 224
             
             # slightly hacky way to get the mean and std of the normalization transform of the loaded clip model:
             self.target_mean, self.target_std = None, None
@@ -102,7 +110,7 @@ class CLIP_Model:
                 ),
             ])
             
-        print(f"CLIP model {clip_model_name} with img_resolution {self.img_resolution} loaded!")
+        print(f"CLIP model {self.clip_model_name} with img_resolution {self.img_resolution} loaded!")
 
     @torch.no_grad()
     def pt_imgs_to_features(self, list_of_tensors: list) -> torch.Tensor:
@@ -269,7 +277,7 @@ class CLIP_Feature_Dataset():
         n_embedded, n_skipped = 0, 0
         print(f"Embedding dataset of {len(self.img_filepaths)} images...")
 
-        for batch in tqdm(self.dataloader):
+        for batch_id, batch in enumerate(tqdm(self.dataloader)):
             crops, crop_names_batch, img_paths, img_feature_dict_batch = batch
             batch_size = crops.shape[0]
             base_img_paths     = [os.path.splitext(img_path)[0] for img_path in img_paths]
@@ -279,13 +287,22 @@ class CLIP_Feature_Dataset():
             # collapse all non-img dimensions into a single dimension (to do a batch CLIP-embed):
             crops_stacked = crops.view(-1, *crops.shape[-3:])
 
-            if self.force_reencode or not all([os.path.exists(feature_save_path) for feature_save_path in feature_save_paths]):
+            # Find all the already existing .pt files for this batch:
+            existing_feature_save_paths = [feature_save_path for feature_save_path in feature_save_paths if os.path.exists(feature_save_path)]
+            # Count how many of those files already hold the features for the current CLIP-model:
+            already_encoded = 0
+            for feature_save_path in existing_feature_save_paths:
+                feature_dict = torch.load(feature_save_path)
+                if self.img_encoder.clip_model_name in feature_dict.keys():
+                    already_encoded += 1
+
+            if self.force_reencode or not already_encoded == batch_size:
                 # batch-embed the crops into CLIP:
                 features = self.img_encoder.pt_imgs_to_features(crops_stacked)
                 # Reshape the features back into [batch_size x n_crops x dim]:
                 features = features.view(batch_size, -1, features.shape[-1])
 
-                # save the features as a dictionary:
+                # save the features as a dict of dicts to disk:
                 batch_index = 0
                 for feature, feature_save_path, crop_names in zip(features, feature_save_paths, crop_names_batch):
                     feature_dict = {}
@@ -297,38 +314,52 @@ class CLIP_Feature_Dataset():
 
                     # Convert all the tensors in the dict to torch.float32:
                     feature_dict = {k: v.float() for k, v in feature_dict.items()}
-                    torch.save(feature_dict, feature_save_path)
+                    
+                    final_feature_dict = {}
+                    if os.path.exists(feature_save_path): # Load the existing feature dict if it exists:
+                        final_feature_dict = torch.load(feature_save_path)
+
+                    # nest the current clip_model feature_dict into the final_feature_dict with the CLIP-model name:
+                    final_feature_dict[self.img_encoder.clip_model_name] = feature_dict
+
+                    torch.save(final_feature_dict, feature_save_path)
                     batch_index += 1
 
                 n_embedded += batch_size
             else:
+                print(f"All images in batch {batch_id} already embedded with {self.img_encoder.clip_model_name}, skipping..")
                 n_skipped += batch_size
 
             if (n_embedded + n_skipped) % 1000 == 0:
                 print(f"Skipped {n_skipped} images, embedded {n_embedded} images")
 
-        print("--- Feature encoding done!")
-        print(f"Saved {len(self.img_filepaths)} feature vector dicts to {self.root_dir}")
+        print("\n\n--- Feature encoding done! ---\n")
+        print(f"Embedded {n_embedded} images ({n_skipped} images were already embedded).")
+        print(f"All feature vector dicts were saved to {self.root_dir}")
         print(f"Subcrop names that were saved: {self.crop_names}")
-
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_dir', type=str, help='Root directory of the dataset (can contain subdirectories)')
-    parser.add_argument('--clip_model_name', type=str, default = "ViT-L-14-336/openai", help='Name of the open_clip model, see https://github.com/mlfoundations/open_clip/tree/main/src/open_clip/model_configs')
+    parser.add_argument('--clip_models_to_use', metavar='S', type=str, nargs='+', default=['ViT-L-14-336/openai', 'ViT-bigG-14/laion2b_s39b_b160k'], help='Which CLIP models to use for embedding')
+    #parser.add_argument('--clip_model_name', type=str, default = "ViT-L-14-336/openai", help='Name of the open_clip model BACKSLASH pretraining dataset name, (open_clip.list_pretrained()) see https://github.com/mlfoundations/open_clip/tree/main/src/open_clip/model_configs and https://github.com/mlfoundations/open_clip/blob/main/src/open_clip/pretrained.py#L139')
     parser.add_argument('--batch_size', type=int, default=8, help='Number of images to encode at once')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of workers to use for the dataloader')
     parser.add_argument('--force_reencode', action='store_true', help='Force CLIP re-encoding of all images (default: False)')
     args = parser.parse_args()
 
-    # Which img-crops to embed with CLIP and save to disk:
+    # Which img-crops to embed with CLIP and save to disk, see extract_crops() method:
     crop_names = ['centre_crop', 'square_padded_crop', 'subcrop1', 'subcrop2']
     
     mp.set_start_method('spawn')
-    dataset = CLIP_Feature_Dataset(args.root_dir, args.clip_model_name, args.batch_size, 
-                                   clip_model_path = None, 
-                                   force_reencode = args.force_reencode, 
-                                   num_workers = args.num_workers,
-                                   crop_names = crop_names)
-    dataset.process()
+    
+    print(f"Embedding all imgs with {len(args.clip_models_to_use)} CLIP models: \n--> {args.clip_models_to_use}")
+
+    for clip_model_name in args.clip_models_to_use:
+        dataset = CLIP_Feature_Dataset(args.root_dir, clip_model_name, args.batch_size, 
+                                    clip_model_path = None, 
+                                    force_reencode = args.force_reencode, 
+                                    num_workers = args.num_workers,
+                                    crop_names = crop_names)
+        dataset.process()

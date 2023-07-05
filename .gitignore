@@ -5,3 +5,4 @@ losses.png
 __pycache__/
 utils/models/*
 utils/*.png
+test_set_predictions.png

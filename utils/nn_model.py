@@ -4,7 +4,7 @@ from torch import nn
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class SimpleFC(nn.Module):
-    def __init__(self, input_size, hidden_sizes, output_size, 
+    def __init__(self, input_size, hidden_sizes, output_size, clip_models,
                  crop_names = ['centre_crop', 'square_padded_crop', 'subcrop1', 'subcrop2'],
                  use_img_stat_features = False,
                  dropout_prob=0.0, 
@@ -12,6 +12,7 @@ class SimpleFC(nn.Module):
                  verbose = 0):
         
         super(SimpleFC, self).__init__()
+        self.clip_models = clip_models   # Names of the clip models that were used to encode the images
         self.crop_names = crop_names
         self.use_img_stat_features = use_img_stat_features
         layer_sizes = [input_size] + hidden_sizes + [output_size]

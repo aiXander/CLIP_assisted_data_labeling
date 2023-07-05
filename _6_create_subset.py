@@ -69,7 +69,7 @@ if __name__ == "__main__":
     parser.add_argument('--input_dir', type=str, help='Input directory')
     parser.add_argument('--min_score', type=float, help='minimum score to copy')
     parser.add_argument('--max_score', type=float, default=1.0, help='Maximum score to copy')
-    parser.add_argument('--extensions', nargs='+', default=['.jpg', '.txt', '.pt'], help='Extensions to copy')
+    parser.add_argument('--extensions', nargs='+', default=['.jpg', '.txt', '.pt', '.pth'], help='Extensions to copy')
     parser.add_argument('--min_aspect_ratio', type=float, default=0.25, help='Minimum aspect ratio of imgs to copy')
     parser.add_argument('--max_aspect_ratio', type=float, default=4.00, help='Maximum aspect ratio of imgs to copy')
     parser.add_argument('--min_n_pixels', type=int, default=(512*512), help='Minimum number of total pixels of imgs to copy')

@@ -72,9 +72,14 @@ class CustomDataset(Dataset):
         feature_path = os.path.join(self.args.root_dir, uuid + '.pt')
 
         try:
-            feature_dict = torch.load(feature_path)
-            img_features = [feature_dict[crop_name] for crop_name in self.model.crop_names]
-            img_features = torch.stack(img_features, dim=0).flatten()
+            full_feature_dict = torch.load(feature_path)
+            sample_features = []
+            for clip_model_name in self.args.clip_models:
+                feature_dict = full_feature_dict[clip_model_name]
+                clip_features = torch.cat([feature_dict[crop_name] for crop_name in self.model.crop_names if crop_name in feature_dict], dim=0).flatten()
+                sample_features.append(clip_features)
+
+            img_features = torch.cat(sample_features, dim=0).flatten()
             self.feature_shape = img_features.shape
         except Exception as e:
             print(f"WARNING: {e} for {uuid}, skipping this sample..")
@@ -96,6 +101,9 @@ def predict_labels(args):
     with open(model_file, "rb") as file:
         model = pickle.load(file)
         model.eval()
+        args.clip_models = model.clip_models
+        print("Loaded regression model trained on the following CLIP models:")
+        print(args.clip_models)
 
     label_file = os.path.join(os.path.dirname(args.root_dir), os.path.basename(args.root_dir) + ".csv")
     if os.path.exists(label_file):

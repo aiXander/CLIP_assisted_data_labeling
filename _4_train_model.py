@@ -210,15 +210,14 @@ def train(args, crop_names, use_img_stat_features):
 
     if not args.dont_save: # Save the model
         model.eval()
-        n_train = len(train_dataset) / 1000
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H:%M:%S")
-        model_save_name = f"{args.model_name}_{timestamp}_{n_train:.1f}k_imgs_{args.n_epochs}_epochs_{losses[1][-1]:.4f}_mse"
+        model_save_name = f"{args.model_name}_{timestamp}_{(len(train_dataset) / 1000):.1f}k_imgs_{args.n_epochs}_epochs_{losses[1][-1]:.4f}_mse"
         os.makedirs("models", exist_ok=True)
         
         with open(f"models/{model_save_name}.pkl", "wb") as file:
             pickle.dump(model, file)
 
-        print("Final model saved as:\n", f"models/{model_save_name}.pkl")
+        print("Final model saved to /model dir as:\n", f"{model_save_name}.pkl")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -244,7 +243,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Custom switches to turn on/off certain features:
-    crop_names = ['centre_crop', 'square_padded_crop', 'subcrop1_0.15', 'subcrop2_0.1']
+    crop_names = ['centre_crop', 'square_padded_crop', 'subcrop1_0.15', 'subcrop2_0.1']  # 0.265
+    #crop_names = ['centre_crop',  'subcrop1_0.15']      # 0.27
+    #crop_names = ['square_padded_crop', 'subcrop2_0.1']  # 0.275
+    #crop_names = ['centre_crop']  # 0.285
+    #crop_names = ['square_padded_crop'] # 0.29
+    #crop_names = ['subcrop1_0.15'] # 0.30
+    #crop_names = ['subcrop2_0.1'] # 0.31
+
     use_img_stat_features = 0
 
     train(args, crop_names, use_img_stat_features)

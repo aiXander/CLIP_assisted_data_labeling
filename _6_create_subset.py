@@ -17,7 +17,7 @@ def copy_data(args, output_suffix = '_subset'):
 
     # Define a function to apply the filtering criteria
     def filter_rows(row):
-        final_label = row["label"] if pd.notnull(row["label"]) else row["predicted_label"]
+        final_label = row["label"] * 2 if pd.notnull(row["label"]) else row["predicted_label"]
         return args.min_score <= final_label <= args.max_score
 
     # Filter the DataFrame using the function

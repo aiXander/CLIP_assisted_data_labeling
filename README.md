@@ -1,6 +1,7 @@
 # CLIP assisted data labeling
 Python toolkit to quickly label/filter lots of images using CLIP embeddings + active learning.
 Main use-case is to filter large image datasets that contain lots of bad images you don't want to train on.
+This kit is meant to be used on a localhost linux desktop with display (labeling is done with simple OpenCV display).
 
 ## Overview:
 0. (optional, but recommended) Create unique uuid's for each img in the root_dir

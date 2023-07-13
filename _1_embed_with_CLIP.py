@@ -18,6 +18,8 @@ import torchvision.transforms as transforms
 from torchvision import models
 from PIL import Image
 
+_DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 if 0:
     print("Pretrained clip models available:")
     options = open_clip.list_pretrained()
@@ -51,9 +53,8 @@ def extract_vgg_features(image, model_name='vgg', layer_index=10):
     image = transform(image).unsqueeze(0)
 
     # Move image to GPU if available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    image = image.to(device)
-    model = model.to(device)
+    image = image.to(_DEVICE)
+    model = model.to(_DEVICE)
 
     # Extract features
     with torch.no_grad():
@@ -62,11 +63,11 @@ def extract_vgg_features(image, model_name='vgg', layer_index=10):
     return features
 
 
-
 class CLIP_Model:
     def __init__(self, clip_model_name, clip_model_path = None, use_pickscore_encoder = False):
         self.use_pickscore_encoder = use_pickscore_encoder
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = _DEVICE
+        self.precision = 'fp16' if self.device == 'cuda' else 'fp32'
         self.clip_model_name = clip_model_name
         self.clip_model_architecture, self.clip_model_pretrained_dataset_name = self.clip_model_name.split('/', 2)
 
@@ -81,11 +82,12 @@ class CLIP_Model:
             self.clip_model      = AutoModel.from_pretrained("yuvalkirstain/PickScore_v1").eval().to(self.device)
             self.img_resolution  = 224
             self.clip_model_architecture = "PickScore_v1"
+            
         else:
             self.clip_model, _, self.clip_preprocess = open_clip.create_model_and_transforms(
                 self.clip_model_architecture, 
                 pretrained=self.clip_model_pretrained_dataset_name, 
-                precision='fp16' if self.device == 'cuda' else 'fp32',
+                precision =self.precision,
                 device=self.device,
                 jit=False,
                 cache_dir=clip_model_path
@@ -119,11 +121,15 @@ class CLIP_Model:
             preprocessed_images = self.clip_preprocess(
                 images=list_of_pil_imgs,
                 return_tensors="pt",
-            ).to("cuda")
+            ).to(_DEVICE)
             image_features = self.clip_model.get_image_features(**preprocessed_images)
         else:
             preprocessed_images = [self.clip_tensor_preprocess(img) for img in list_of_tensors]        
             preprocessed_images = torch.stack(preprocessed_images).to(self.device)
+
+            if self.precision == 'fp16':
+                preprocessed_images = preprocessed_images.half()
+
             image_features = self.clip_model.encode_image(preprocessed_images)
         
         image_features /= image_features.norm(dim=-1, keepdim=True)
@@ -134,7 +140,7 @@ class CustomImageDataset(Dataset):
     def __init__(self, image_paths, img_resolution, crop_names):
         self.image_paths = image_paths
         self.crop_names  = crop_names
-        self.device      = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device      = _DEVICE
         self.img_resolution = img_resolution
         self.img_featurizer = ImageFeaturizer()
 
@@ -338,7 +344,6 @@ class CLIP_Feature_Dataset():
         print(f"All feature vector dicts were saved to {self.root_dir}")
         print(f"Subcrop names that were saved: {self.crop_names}")
         print("-----------------------------------------------\n\n")
-
 
 if __name__ == "__main__":
     

@@ -15,9 +15,14 @@ def copy_data(args, output_suffix = '_subset'):
     database = pd.read_csv(database_path)
     print(f"Loaded database with {len(database)} rows")
 
+    # get the maximum actual label value:
+    max_actual_label = database["label"].max()
+    print(f"Max actual label: {max_actual_label}")
+
     # Define a function to apply the filtering criteria
     def filter_rows(row):
-        final_label = row["label"] * 2 if pd.notnull(row["label"]) else row["predicted_label"]
+        scaling_f = 1 / max_actual_label
+        final_label = row["label"] * scaling_f if pd.notnull(row["label"]) else row["predicted_label"]
         return args.min_score <= final_label <= args.max_score
 
     # Filter the DataFrame using the function

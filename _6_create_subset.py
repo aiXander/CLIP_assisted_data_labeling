@@ -50,7 +50,7 @@ def copy_data(args, output_suffix = '_subset'):
             filename = uuid + ext
             input_path = os.path.join(args.input_dir, filename)
             output_path = os.path.join(output_folder, filename)
-            if not args.test:
+            if not args.test and os.path.exists(input_path):
                 shutil.copy(input_path, output_path)
             counter[args.extensions.index(ext)] += 1
 

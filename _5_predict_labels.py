@@ -13,7 +13,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.multiprocessing as mp
 
-def plot_label_distribution(database, args, max_x = 0.6):
+def plot_label_distribution(database, args, max_x = 1.0):
     # Save a plot of the label distribution
     fig, ax = plt.subplots(figsize=(10, 6))
 

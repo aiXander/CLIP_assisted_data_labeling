@@ -20,7 +20,7 @@ from PIL import Image
 
 _DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-if 0:
+if 1:
     print("Pretrained clip models available:")
     options = open_clip.list_pretrained()
     for option in options:
@@ -333,7 +333,6 @@ class CLIP_Feature_Dataset():
 
                 n_embedded += batch_size
             else:
-                print(f"All images in batch {batch_id} already embedded with {self.img_encoder.clip_model_name}, skipping..")
                 n_skipped += batch_size
 
             if (n_embedded + n_skipped) % 1000 == 0:

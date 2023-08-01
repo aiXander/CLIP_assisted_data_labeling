@@ -32,7 +32,7 @@ def predict_score(pil_img, aesthetic_regressor, active_clip_models):
         img_dataset = CustomImageDataset([image_path], clip_model.img_resolution, aesthetic_regressor.crop_names)
         crops, crop_names = img_dataset.extract_crops(pil_img)
         features = clip_model.pt_imgs_to_features(crops)
-        
+
         # Reshape the features back into [batch_size x n_crops x dim]:
         batch_size = 1
         features = features.view(batch_size, -1, features.shape[-1])
@@ -48,7 +48,6 @@ if __name__ == "__main__":
 
     input_img_dir = "/home/xander/Projects/cog/xander_eden_stuff/xander/assets/garden"
     model_path    = "/home/xander/Projects/cog/xander_eden_stuff/xander/CLIP_assisted_data_labeling/models/combo_2023-07-31_06:20:57_8.1k_imgs_80_epochs_-1.0000_mse.pkl"
-    model_path    = "/home/xander/Projects/cog/xander_eden_stuff/xander/CLIP_assisted_data_labeling/models/combo_2023-08-01_08:16:46_8.1k_imgs_80_epochs_-1.0000_mse.pkl"
     device        = "cpu"
 
     # Load the scoring model:

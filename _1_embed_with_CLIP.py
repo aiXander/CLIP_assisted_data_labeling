@@ -64,9 +64,12 @@ def extract_vgg_features(image, model_name='vgg', layer_index=10):
 
 
 class CLIP_Model:
-    def __init__(self, clip_model_name, clip_model_path = None, use_pickscore_encoder = False):
+    def __init__(self, clip_model_name, clip_model_path = None, use_pickscore_encoder = False, device = None):
         self.use_pickscore_encoder = use_pickscore_encoder
-        self.device = _DEVICE
+        if device is None:
+            self.device = _DEVICE
+        else:
+            self.device = device
         self.precision = 'fp16' if self.device == 'cuda' else 'fp32'
         self.clip_model_name = clip_model_name
         self.clip_model_architecture, self.clip_model_pretrained_dataset_name = self.clip_model_name.split('/', 2)

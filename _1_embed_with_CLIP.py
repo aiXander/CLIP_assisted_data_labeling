@@ -131,6 +131,13 @@ class CLIP_Feature_Dataset():
         print("-----------------------------------------------\n\n")
 
 if __name__ == "__main__":
+
+    """
+    - Loop over all the images in the root_dir
+    - Create multiple, standardized crops for each img
+    - Embed them with CLIP (possibly multiple models)
+    - Save the embeddings to disk
+    """
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_dir', type=str, help='Root directory of the dataset (can contain subdirectories)')

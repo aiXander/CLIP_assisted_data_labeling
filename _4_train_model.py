@@ -218,6 +218,11 @@ def train(args, crop_names, use_img_stat_features):
         print("Final model saved to /model dir as:\n", f"{model_save_name}.pth")
 
 if __name__ == "__main__":
+
+    """
+    Train a simple CLIP-based regression model on a dataset of images and labels.
+    """
+
     parser = argparse.ArgumentParser()
 
     # IO args:

@@ -342,6 +342,11 @@ def label_dataset(root_directory, skip_labeled_files = True):
 
 
 if __name__ == "__main__":
+
+    """
+    Fire up a very basic opencv labeling interface
+    """
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_dir', type=str, help='Root directory of the dataset')
     parser.add_argument('--skip_labeled_files', action='store_true', help='Skip files that are already labeled')

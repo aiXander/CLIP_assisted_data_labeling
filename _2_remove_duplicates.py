@@ -126,6 +126,12 @@ def fix_duplicate(duplicate_index, img_paths, outdir, sim_value, mode):
     
 
 if __name__ == '__main__':
+
+    """
+    Scan for near duplicate imgs using CILP embeddings
+    and copy / move those to a new folder
+    """
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_dir', type=str, help='Root directory of the dataset')
     parser.add_argument('--threshold', type=float, default=0.98, help='Cosine-similarity threshold for near-duplicate detection')

@@ -112,6 +112,10 @@ def prep_dataset_directory(args):
         print(f"{print_verb} {renamed_counter} files (converted {converted_counter}, resized {resized_counter}), skipped {skipped}")
 
 if __name__ == "__main__":
+    """
+    This script renames all the files in the root_dir with a unique string identifier,
+    it also optionally converts all images to jpg and downsizes them if they are very large.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_dir', type=str, help='Root directory of the dataset folder')
     parser.add_argument('--output_dir', type=str, default = None, help='Output directory')

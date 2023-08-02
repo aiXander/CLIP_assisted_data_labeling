@@ -7,7 +7,7 @@ if __name__ == "__main__":
     input_img_dir = "/home/xander/Projects/cog/xander_eden_stuff/xander/assets/garden"
     model_path    = "/home/xander/Projects/cog/xander_eden_stuff/xander/CLIP_assisted_data_labeling/models/combo_2023-08-02_03:48:00_8.1k_imgs_80_epochs_-1.0000_mse.pth"
     device        = "cpu"
-    
+
     # Load the scoring model (only do this once in a python session):
     aesthetic_regressor = AestheticRegressor(model_path, device = device)
 

@@ -224,6 +224,29 @@ class CustomImageDataset(Dataset):
         return crops, crop_names
 
 
+import time
+class Timer():
+    'convenience class to time code'
+    def __init__(self, name, start = False):
+        self.name = name
+        self.total_time_running = 0.0
+        if start:
+            self.start()
+
+    def pause(self):
+        self.total_time_running += time.time() - self.last_start
+
+    def start(self):
+        self.last_start = time.time()
+
+    def status(self):
+        print(f'{self.name} accumulated {self.total_time_running:.3f} seconds of runtime')
+
+    def exit(self, *args):
+        self.total_time_running += time.time() - self.last_start
+        print(f'{self.name} took {self.total_time_running:.3f} seconds')
+
+
 class AestheticRegressor:
     """
     Aesthetic Regressor to predict the aesthetic score of images.
@@ -256,4 +279,6 @@ class AestheticRegressor:
             all_img_features.append(features)
         
         features = torch.stack(all_img_features)
-        return self.model(features.to(self.device).float()).item()  # Convert tensor to single float value
+        score = self.model(features.to(self.device).float()).item()
+
+        return score

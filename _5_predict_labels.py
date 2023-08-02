@@ -98,12 +98,11 @@ def predict_labels(args):
     output_dir = args.root_dir + '_predicted_scores'
     os.makedirs(output_dir, exist_ok=True)
 
-    with open(model_file, "rb") as file:
-        model = pickle.load(file)
-        model.eval()
-        args.clip_models = model.clip_models
-        print("Loaded regression model trained on the following CLIP models:")
-        print(args.clip_models)
+    model = torch.load(model_path)
+    model.eval()
+    args.clip_models = model.clip_models
+    print("Loaded regression model trained on the following CLIP models:")
+    print(args.clip_models)
 
     label_file = os.path.join(os.path.dirname(args.root_dir), os.path.basename(args.root_dir) + ".csv")
     if os.path.exists(label_file):

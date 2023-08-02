@@ -213,11 +213,9 @@ def train(args, crop_names, use_img_stat_features):
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H:%M:%S")
         model_save_name = f"{args.model_name}_{timestamp}_{(len(train_dataset) / 1000):.1f}k_imgs_{args.n_epochs}_epochs_{losses[1][-1]:.4f}_mse"
         os.makedirs("models", exist_ok=True)
-        
-        with open(f"models/{model_save_name}.pkl", "wb") as file:
-            pickle.dump(model, file)
 
-        print("Final model saved to /model dir as:\n", f"{model_save_name}.pkl")
+        torch.save(model, f"models/{model_save_name}.pth")
+        print("Final model saved to /model dir as:\n", f"{model_save_name}.pth")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

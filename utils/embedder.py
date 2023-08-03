@@ -281,4 +281,4 @@ class AestheticRegressor:
         features = torch.stack(all_img_features)
         score = self.model(features.to(self.device).float()).item()
 
-        return score
+        return score, features

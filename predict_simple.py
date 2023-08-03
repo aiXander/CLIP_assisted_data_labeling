@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     print("\nPredicting aesthetic scores...")
     for image_path in tqdm(list_of_img_paths):
-        score = aesthetic_regressor.predict_score(Image.open(image_path))
+        score, embedding = aesthetic_regressor.predict_score(Image.open(image_path))
         print(f"Score: {score:.3f} for {os.path.basename(image_path)}")
 
         if output_dir is not None:

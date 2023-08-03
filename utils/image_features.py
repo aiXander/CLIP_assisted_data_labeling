@@ -1,5 +1,4 @@
 import numpy as np
-from skimage import feature
 from scipy.fftpack import dct
 from scipy.stats import entropy
 import cv2

@@ -98,7 +98,13 @@ def predict_labels(args):
     output_dir = args.root_dir + '_predicted_scores'
     os.makedirs(output_dir, exist_ok=True)
 
-    model = torch.load(model_path)
+
+    print(model_file)
+    if not os.path.exists(model_file): 
+        print(f"ERROR: model file {model_file} does not exist!")
+        exit()
+
+    model = torch.load(model_file)
     model.eval()
     args.clip_models = model.clip_models
     print("Loaded regression model trained on the following CLIP models:")

@@ -8,8 +8,11 @@ import open_clip
 import os
 import random
 from PIL import Image
+import numpy as np
 
 from .image_features import ImageFeaturizer
+
+_DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def extract_vgg_features(image, model_name='vgg', layer_index=10):
     # Load pre-trained model

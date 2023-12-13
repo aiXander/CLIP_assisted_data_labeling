@@ -82,6 +82,7 @@ def train(args, crop_names, use_img_stat_features):
 
     # Map the labels to 0-1:
     print("Normalizing labels to [0,1]...")
+    print(f"min: {labels.min()}, max: {labels.max()}")
     labels_min, labels_max = labels.min(), labels.max()
     labels = (labels - labels_min) / (labels_max - labels_min)
 
@@ -249,7 +250,7 @@ if __name__ == "__main__":
     crop_names = ['centre_crop', 'square_padded_crop', 'subcrop1_0.15', 'subcrop2_0.1']  # 0.265
     #crop_names = ['centre_crop',  'subcrop2_0.1']      # 0.27
     #crop_names = ['square_padded_crop', 'subcrop2_0.1']  # 0.275
-    #crop_names = ['centre_crop']  # 0.285
+    crop_names = ['centre_crop']  # 0.285
     #crop_names = ['square_padded_crop'] # 0.29
     #crop_names = ['subcrop1_0.15'] # 0.30
     #crop_names = ['subcrop2_0.1'] # 0.31

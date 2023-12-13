@@ -157,8 +157,8 @@ class CustomImageDataset(Dataset):
         """
         img = transforms.ToTensor()(pil_img).to(self.device).unsqueeze(0)
         c, h, w = img.shape[1:]
-        crops, crop_names = [], []        
-        
+        crops, crop_names = [], []      
+
         if 'centre_crop' in self.crop_names:
             crop_size = min(w, h)
             centre_crop = img[:, :, h // 2 - crop_size // 2:h // 2 + crop_size // 2, w // 2 - crop_size // 2:w // 2 + crop_size // 2]
@@ -179,7 +179,7 @@ class CustomImageDataset(Dataset):
             crops.append(square_padded_img)
             crop_names.append("square_padded_crop")
 
-        if ('subcrop1' in self.crop_names) and ('subcrop2' in self.crop_names):
+        if any('subcrop1' in name for name in self.crop_names) or any('subcrop2' in name for name in self.crop_names):
             # Create two small, square subcrops of different size (to be able to detect blurry images):
             # This specific cropping method is highly experimental and can probably be improved
             subcrop_area_fractions = [0.15, 0.1]
@@ -208,10 +208,13 @@ class CustomImageDataset(Dataset):
             subcrop_1 = F.interpolate(subcrop_1, size=self.img_resolution, mode='bilinear', align_corners=False)
             subcrop_2 = F.interpolate(subcrop_2, size=self.img_resolution, mode='bilinear', align_corners=False)
 
-            crops.append(subcrop_1)
-            crops.append(subcrop_2)
-            crop_names.append(f"subcrop1_{subcrop_area_fractions[0]}")
-            crop_names.append(f"subcrop2_{subcrop_area_fractions[1]}")
+            if any('subcrop1' in name for name in self.crop_names):
+                crops.append(subcrop_1)
+                crop_names.append(f"subcrop1_{subcrop_area_fractions[0]}")
+
+            if any('subcrop2' in name for name in self.crop_names):
+                crops.append(subcrop_2)
+                crop_names.append(f"subcrop2_{subcrop_area_fractions[1]}")
 
         if random.random() < sample_fraction_save_to_disk:
             timestamp = str(int(time.time()*100))
@@ -278,10 +281,11 @@ class AestheticRegressor:
         for clip_model in self.clip_models:
             img_dataset = CustomImageDataset([pil_img], clip_model.img_resolution, self.model.crop_names, self.device)
             crops, _ = img_dataset.extract_crops(pil_img)
+            print(len(crops))
             features = clip_model.pt_imgs_to_features(crops).unsqueeze(0)  # Add batch dimension
             all_img_features.append(features)
         
-        features = torch.stack(all_img_features)
+        features = torch.stack(all_img_features).flatten().unsqueeze(0)  # Add batch dimension
         score = self.model(features.to(self.device).float()).item()
 
         return score, features

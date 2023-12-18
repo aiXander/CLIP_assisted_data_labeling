@@ -7,12 +7,11 @@ from tqdm import tqdm
 if __name__ == "__main__":
 
     input_img_dir = "/home/rednax/SSD2TB/Fast_Datasets/SD/Labeling/test"
-    model_path    = "/home/rednax/SSD2TB/Xander_Tools/CLIP_assisted_data_labeling/models/eden_scorer_2023-12-13_9.4k_imgs_80_epochs.pth"
-    #model_path    = "/home/rednax/SSD2TB/Xander_Tools/CLIP_assisted_data_labeling/models/eden_scorer_2023-12-13_9.4k_imgs_80_epochs_1_crop.pth"
+    model_path    = "models/single_crop_regression_9.4k_imgs_80_epochs.pth"
     device        = "cpu"
 
     #output_dir = None # dont copy the scored images
-    output_dir = input_img_dir + "_aesthetic_scores_2" # copy the scored images
+    output_dir = input_img_dir + "_aesthetic_scores" # copy the scored images
 
     # Load the scoring model (only do this once in a python session):
     aesthetic_regressor = AestheticRegressor(model_path, device = device)

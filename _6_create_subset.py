@@ -43,9 +43,13 @@ def copy_data(args, output_suffix = '_subset'):
     for uuid in tqdm(database["uuid"].values):
         # get the corresponding img path for this uuid:
         img_path = os.path.join(args.input_dir, uuid + ".jpg")
-        with Image.open(img_path) as img:
-            width, height = img.size
-            aspect_ratio = width / height
+        try:
+            with Image.open(img_path) as img:
+                width, height = img.size
+                aspect_ratio = width / height
+        except Exception as e:
+            print(f"Could not open {img_path}, {str(e)}")
+            continue
 
         # check if the img is within the aspect ratio and pixel size range:
         if aspect_ratio < args.min_aspect_ratio or aspect_ratio > args.max_aspect_ratio or (width*height) <= args.min_n_pixels:

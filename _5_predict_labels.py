@@ -155,6 +155,18 @@ def predict_labels(args):
         database.drop(columns=['predicted_label_new', 'timestamp_new'], inplace=True)
         n_predictions += len(uuids)
 
+        # add the "predicted_label" to the original uuid.json file:
+        for uuid, label in zip(uuids, predicted_labels):
+            label = label.item()
+            json_file = os.path.join(args.root_dir, uuid + '.json')
+            if os.path.exists(json_file):
+                with open(json_file, 'r') as f:
+                    data = json.load(f)
+                    data['predicted_label'] = label
+                with open(json_file, 'w') as f:
+                    json.dump(data, f)
+
+
         if args.copy_imgs_fraction > 0: # copy a random fraction of the images to the output directory
             indices = np.arange(len(uuids))
             random_indices = indices[np.random.random(len(uuids)) < args.copy_imgs_fraction]

@@ -281,7 +281,6 @@ class AestheticRegressor:
         for clip_model in self.clip_models:
             img_dataset = CustomImageDataset([pil_img], clip_model.img_resolution, self.model.crop_names, self.device)
             crops, _ = img_dataset.extract_crops(pil_img)
-            print(len(crops))
             features = clip_model.pt_imgs_to_features(crops).unsqueeze(0)  # Add batch dimension
             all_img_features.append(features)
         

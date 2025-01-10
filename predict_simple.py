@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
     # IO args:
     parser.add_argument('--input_img_dir', type=str, help='Root directory of the (optionally multiple) datasets')
-    parser.add_argument('--model_path',    type=str, default='models/single_crop_regression_9.4k_imgs_80_epochs.pth', help='Path to the model file (.pth)')
+    parser.add_argument('--model_path',    type=str, default='models/random_c_2024-12-10_11:34:22_4.8k_imgs_30_epochs_-1.0000_mse.pth', help='Path to the model file (.pth)')
     args = parser.parse_args()
 
     input_img_dir = args.input_img_dir

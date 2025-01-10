@@ -258,7 +258,10 @@ def load_image_and_prompt(uuid, root_directory):
     if os.path.exists(json_filepath):
         with open(json_filepath, "r") as f:
             json_data = json.load(f)
-            prompt = json_data['text_input']
+            try:
+                prompt = json_data['text_input']
+            except:
+                prompt = ""
 
     return image, prompt
 

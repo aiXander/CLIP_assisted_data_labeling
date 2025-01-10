@@ -235,9 +235,9 @@ if __name__ == "__main__":
     # Training args:
     parser.add_argument('--clip_models_to_use', metavar='S', type=str, nargs='+', default=['all'], help='Which CLIP model embeddings to use, default: use all found')
     parser.add_argument('--test_fraction', type=float, default=0.25,  help='Fraction of the training data to use for testing')
-    parser.add_argument('--n_epochs',      type=int,   default=80,    help='Number of epochs to train for')
-    parser.add_argument('--batch_size',    type=int,   default=32,    help='Batch size for training')
-    parser.add_argument('--lr',            type=float, default=0.0005, help='Learning rate')
+    parser.add_argument('--n_epochs',      type=int,   default=30,    help='Number of epochs to train for')
+    parser.add_argument('--batch_size',    type=int,   default=16,    help='Batch size for training')
+    parser.add_argument('--lr',            type=float, default=0.0002, help='Learning rate')
     parser.add_argument('--weight_decay',  type=float, default=0.0004, help='Weight decay for the Adam optimizer')
     parser.add_argument('--dropout_prob',  type=float, default=0.5,   help='Dropout probability')
     parser.add_argument('--hidden_sizes',  type=int,   nargs='+',     default=[264,128,64], help='Hidden sizes of the FC neural network')
@@ -248,9 +248,9 @@ if __name__ == "__main__":
 
     # Custom switches to turn on/off certain features:
     crop_names = ['centre_crop', 'square_padded_crop', 'subcrop1_0.15', 'subcrop2_0.1']  # 0.265
-    #crop_names = ['centre_crop',  'subcrop2_0.1']      # 0.27
+    crop_names = ['centre_crop',  'subcrop2_0.1']      # 0.27
     #crop_names = ['square_padded_crop', 'subcrop2_0.1']  # 0.275
-    crop_names = ['centre_crop']  # 0.285
+    #crop_names = ['centre_crop']  # 0.285
     #crop_names = ['square_padded_crop'] # 0.29
     #crop_names = ['subcrop1_0.15'] # 0.30
     #crop_names = ['subcrop2_0.1'] # 0.31

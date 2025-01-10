@@ -134,7 +134,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_dir', type=str, help='Root directory of the dataset')
-    parser.add_argument('--threshold', type=float, default=0.98, help='Cosine-similarity threshold for near-duplicate detection')
+    parser.add_argument('--threshold', type=float, default=0.96, help='Cosine-similarity threshold for near-duplicate detection')
     parser.add_argument('--mode', type=str, default='copy', help='copy / move, Use copy to test the script, move after')
     parser.add_argument('--clip_model_to_use', type=str, default=None, help='Which CLIP model to use, if None, use the first one found')
     parser.add_argument('--chunk_size', type=int, default=10000, help='Chunk the duplicate detection into batches of this size to avoid OOM')

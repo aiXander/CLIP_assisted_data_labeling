@@ -8,6 +8,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset, random_split
 from torch.optim import Adam
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 import matplotlib.pyplot as plt
 from utils.nn_model import device, SimpleFC
 from sklearn.metrics import r2_score
@@ -120,10 +121,12 @@ def train(args, crop_names, use_img_stat_features):
     model.train()
     model.to(device)
 
-    # 4. Train the network for n epochs using Adam optimizer and standard regression loss
+    # 4. Train the network using Adam optimizer with cosine learning rate scheduler
     optimizer = Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=args.restart_epochs, T_mult=1, eta_min=args.min_lr)
     criterion = nn.MSELoss()
-    losses    = [[], []] # train, test losses
+    losses    = [[], []]  # train, test losses
+    lrs      = []        # learning rates
 
     def get_test_loss(model, test_loader, epoch, plot_correlation=1):
         if len(test_loader) == 0:
@@ -164,8 +167,10 @@ def train(args, crop_names, use_img_stat_features):
         model.train()
         return test_loss, dummy_test_loss
     
-    def plot_losses(losses, y_axis_percentile_cutoff = 99.75, include_y_zero = 1):
+    def plot_losses(losses, lrs, y_axis_percentile_cutoff=99.75, include_y_zero=1):
+        # Plot losses
         plt.figure(figsize=(16, 8))
+        plt.subplot(1, 2, 1)
         plt.plot(losses[0], label="Train")
         plt.plot(losses[1], label="Test")
         plt.axhline(y=min(losses[1]), color='r', linestyle='--', label="Best test loss")
@@ -177,7 +182,16 @@ def train(args, crop_names, use_img_stat_features):
         plt.xlabel("Epoch")
         plt.ylabel("MSE loss")
         plt.legend()
-        plt.savefig("losses.png")
+        
+        # Plot learning rate
+        plt.subplot(1, 2, 2)
+        plt.plot(lrs, label="Learning Rate")
+        plt.xlabel("Epoch")
+        plt.ylabel("Learning Rate")
+        plt.legend()
+        
+        plt.tight_layout()
+        plt.savefig("training_progress.png")
         plt.close()
 
     test_loss, dummy_test_loss = get_test_loss(model, test_loader, -1)
@@ -194,20 +208,25 @@ def train(args, crop_names, use_img_stat_features):
             optimizer.step()
             train_loss += loss.item()
 
+        # Step the scheduler
+        scheduler.step()
+        current_lr = scheduler.get_last_lr()[0]
+        lrs.append(current_lr)
+
         train_loss = train_loss / len(train_loader)
         test_loss, dummy_test_loss = get_test_loss(model, test_loader, epoch)
         losses[0].append(train_loss)
         losses[1].append(test_loss)
         if epoch % 2 == 0:
             test_str = f", test mse: {test_loss:.4f} (dummy: {dummy_test_loss:.4f})" if test_loss > 0 else ""
-            print(f"Epoch {epoch+1} / {args.n_epochs}, train-mse: {train_loss:.4f}{test_str}")
+            print(f"Epoch {epoch+1}/{args.n_epochs}, train-mse: {train_loss:.4f}, lr: {current_lr:.6f}{test_str}")
         if epoch % (args.n_epochs // 10) == 0:
-            plot_losses(losses)
+            plot_losses(losses, lrs)
 
     # Report:
     if test_loss > 0:
         print(f"---> Best test mse loss: {min(losses[1]):.4f} in epoch {np.argmin(losses[1])+1}")
-    plot_losses(losses)
+    plot_losses(losses, lrs)
 
     if not args.dont_save: # Save the model
         model.eval()
@@ -219,11 +238,6 @@ def train(args, crop_names, use_img_stat_features):
         print("Final model saved to /model dir as:\n", f"{model_save_name}.pth")
 
 if __name__ == "__main__":
-
-    """
-    Train a simple CLIP-based regression model on a dataset of images and labels.
-    """
-
     parser = argparse.ArgumentParser()
 
     # IO args:
@@ -234,13 +248,15 @@ if __name__ == "__main__":
 
     # Training args:
     parser.add_argument('--clip_models_to_use', metavar='S', type=str, nargs='+', default=['all'], help='Which CLIP model embeddings to use, default: use all found')
-    parser.add_argument('--test_fraction', type=float, default=0.25,  help='Fraction of the training data to use for testing')
-    parser.add_argument('--n_epochs',      type=int,   default=30,    help='Number of epochs to train for')
-    parser.add_argument('--batch_size',    type=int,   default=16,    help='Batch size for training')
-    parser.add_argument('--lr',            type=float, default=0.0002, help='Learning rate')
-    parser.add_argument('--weight_decay',  type=float, default=0.0004, help='Weight decay for the Adam optimizer')
-    parser.add_argument('--dropout_prob',  type=float, default=0.5,   help='Dropout probability')
-    parser.add_argument('--hidden_sizes',  type=int,   nargs='+',     default=[264,128,64], help='Hidden sizes of the FC neural network')
+    parser.add_argument('--test_fraction', type=float, default=0.25, help='Fraction of the training data to use for testing')
+    parser.add_argument('--n_epochs', type=int, default=60, help='Number of epochs to train for')
+    parser.add_argument('--batch_size', type=int, default=16, help='Batch size for training')
+    parser.add_argument('--lr', type=float, default=0.0002, help='Initial learning rate')
+    parser.add_argument('--min_lr', type=float, default=1e-6, help='Minimum learning rate for cosine scheduler')
+    parser.add_argument('--restart_epochs', type=int, default=10, help='Number of epochs before learning rate restart')
+    parser.add_argument('--weight_decay', type=float, default=0.0006, help='Weight decay for the Adam optimizer')
+    parser.add_argument('--dropout_prob', type=float, default=0.5, help='Dropout probability')
+    parser.add_argument('--hidden_sizes', type=int, nargs='+', default=[264,128,64], help='Hidden sizes of the FC neural network')
 
     parser.add_argument('--print_network_layout', action='store_true', help='Print the network layout')
     parser.add_argument('--random_seed', type=int, default=42, help='Random seed for reproducibility')
